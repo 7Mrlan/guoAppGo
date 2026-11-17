@@ -18,7 +18,7 @@ function choose(value: ThemePref): void {
   setThemePref(value);
 }
 
-// 系统外观变化时，未手动覆盖的页面跟着变。
+// 挂载时应用一次已保存的偏好。
 applyTheme(pref.value);
 </script>
 

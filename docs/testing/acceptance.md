@@ -13,10 +13,11 @@
 
 禁止写法："正常显示""体验流畅""基本可用""性能良好""人工确认""看起来切换了""目测"。
 
-### 两条测试规矩（2026-11-17 定，违反会产生假故障）
+### 三条测试规矩（2026-11-17 定，违反会产生假故障或假绿）
 
 1. **`Eval` 不许在 `OnDidFinishLoad` 之类的主线程回调里调用**，必须从 goroutine 调；否则会卡死、25 秒超时、只留一行 `did-finish-load`，看起来像随机失败。
 2. **GUI 测试用 `MYGO_E2E=1` 开关**：没有桌面会话时（本机受限会话里 WebView2 返回 `0x8000FFFF`）测试 `t.Skip`，进程退出码 0，**跳过不算失败**；有会话时正常断言。
+3. **`-run` 必须能命中测试**：命令输出里要出现至少一条 `=== RUN`；`go test -run` 匹配不到时仍退出 0（`[no tests to run]`），这种"绿"视为假绿，本条按未实现处理。
 
 ## M1 子任务（前端工程与设计系统，现实 7 人天）
 
@@ -32,13 +33,14 @@
 
 | 编号 | 功能 | 前置条件 | 步骤 | 期望结果 | 反例与期望 | 关联需求/ADR | 状态 |
 | --- | --- | --- | --- | --- | --- | --- | --- |
-| AC-M1-1a | 前端构建可复现并嵌入二进制 | 干净克隆；Node ≥22；Vue/Vite 版本由 `package-lock.json` 锁定（ADR-0006） | 1. `npm ci`；2. `npm run build`；3. `git diff --exit-code web/dist`；4. `go build ./...`；5. `go test ./web -run TestDistEmbedded`；6. 启动二进制 | 1–5 退出码 0；3 为空 diff（产物与源码一致）；`web/dist/` 含 index.html 与至少 1 个 js；连续两次构建 dist 的 sha256 相同；首屏 JS ≤200 KB gzip（构建脚本打印）；启动后 `Eval("document.title")` 返回 `guoAppGo` | 断网时 `npm ci` 失败且不产出 dist：构建脚本先写临时目录、成功后原子替换，失败后 `web/dist` 仍是上一版 | ADR-0002、ADR-0006；evaluation-plan §6.3 M1 | 未开始 |
-| AC-M1-1b | 干净克隆可编译（.gitignore 回归） | 无 | 1. `git check-ignore -v web/dist/index.html`；2. `git ls-files web/dist`；3. 按 `git ls-files -co --exclude-standard` 复制树后 `go build ./...` | 1 退出码 1；2 列出至少 2 个文件；3 退出码 0 | 临时把规则改成非锚定 `dist/` 后，复制树 `go build` 必须失败并报 `pattern all:dist` | M0 阻塞项；evaluation-plan §6.3 M1 | 未开始 |
+| AC-M1-1a | 前端构建可复现并嵌入二进制 | 干净克隆；Node ≥22；Vue/Vite 版本由 `package-lock.json` 锁定（ADR-0006） | 1. `npm ci`；2. `npm run build`；3. `git diff --exit-code web/dist`；4. `go build ./...`；5. `go test ./web -run TestDistEmbedded`；6. 启动二进制 | 1–5 退出码 0；3 为空 diff（产物与源码一致）；`web/dist/` 含 index.html 与至少 1 个 js；连续两次构建 dist 的 sha256 相同；首屏 JS ≤200 KB gzip（构建脚本打印）；启动后 `Eval("document.title")` 返回 `guoAppGo` | 断网时 `npm ci` 失败且不产出 dist：构建脚本先写临时目录、成功后原子替换，失败后 `web/dist` 仍是上一版 | ADR-0002、ADR-0006；evaluation-plan §6.3 M1 | 通过 |
+| AC-M1-1b | 干净克隆可编译（.gitignore 回归） | 无 | 1. `git check-ignore -v web/dist/index.html`；2. `git ls-files web/dist`；3. 按 `git ls-files -co --exclude-standard` 复制树后 `go build ./...` | 1 退出码 1；2 列出至少 2 个文件；3 退出码 0 | 临时把规则改成非锚定 `dist/` 后，复制树 `go build` 必须失败并报 `pattern all:dist` | M0 阻塞项；evaluation-plan §6.3 M1 | 通过 |
 | AC-M1-2a | 设计令牌单一来源且取值正确 | tokens.css、`scripts/check-tokens.mjs`、`scripts/contrast.mjs` 存在 | 1. `node scripts/check-tokens.mjs`；2. `node scripts/contrast.mjs`；3. `MYGO_E2E=1 go test ./web -run TestM1Tokens -v` | 1 退出 0、令牌数 24；2 对 12 组前景/背景打印 WCAG 比值，正文 ≥4.5、大字 ≥3.0，退出 0；3 中 `Eval("getComputedStyle(document.documentElement).getPropertyValue('--color-bg').trim()")` 与 tokens.css 里**当前生效主题**声明的值一致，且 `Eval("document.documentElement.dataset.theme")` 与 `matchMedia('(prefers-color-scheme: dark)').matches` 一致 | 把 `--color-bg` 改成 `#ffffff` 后 TestM1Tokens 必须 FAIL（断言不等），不是人工看；无桌面会话时测试 SKIP、退出 0 | M1-2 | 通过 |
 | AC-M1-2b | 主题跟随系统且手动覆盖可持久 | 系统主题可切；`MYGO_E2E=1` | 1. `MYGO_E2E=1 go test ./web -run TestM1Theme -v` | 无覆盖时 `Eval("document.documentElement.dataset.theme === (matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light')")` 为 true；写 `localStorage.theme='dark'` 并 reload 后 `Eval("document.documentElement.dataset.theme")` 为 `dark`，且 `Eval("getComputedStyle(document.body).backgroundColor")` 等于令牌暗色值 | `localStorage.theme='blue'` 时回落跟随系统，`dataset.theme` 仍是 dark/light 之一，body 背景不是 transparent | M1-2 | 通过 |
-| AC-M1-2c | 对比度基线不退化（机器判定） | `scripts/contrast-baseline.json` 存在，键为 `theme|fg|bg`，24 条与 `PAIRS` 一一对应 | 1. `node scripts/contrast.mjs`；2. `node scripts/contrast.mjs --update` 后再跑；3. 调暗 `--color-success` 10% 后重跑；4. 临时删一条 `PAIRS` 后重跑；5. 新增一条配对但不更新基线后重跑 | 1 退出 0 且不修改基线文件（`git diff --exit-code scripts/contrast-baseline.json` 为空）；2 退出 0 且基线 24 条不变或新增；3 退出 1 并打印“低于基线：<key> 现值 vs 基线”；4 退出 1 打印“基线残留：<key>”；5 退出 1 打印“新配对未入基线：<key>”，提示先跑 `--update` | 不带参数运行时写基线视为失败；`--update` 是唯一写基线的入口 | M1-2；ADR-0006 的产物校验同理 | 待复核 |
-| AC-M1-3a | 通用组件计数、可访问名与禁用态正确 | `/dev/components` 页；`MYGO_E2E=1` | 1. `MYGO_E2E=1 go test ./web -run TestM1Components -v` | `Eval("document.querySelectorAll('[data-ac]').length")` 为 12；`Eval("[...document.querySelectorAll('[data-ac]')].filter(e => !e.getAttribute('aria-label') && !e.textContent.trim()).length")` 为 0；`Eval("document.querySelectorAll('[data-ac][disabled]').length")` 为 1；`Eval("document.querySelectorAll('[data-ac]:not([disabled])').length")` 为 11；Esc 后 `Eval("document.querySelector('[data-role=layer]')")` 为 null | 删掉某个控件的 aria-label 后测试必须 FAIL（计数 1）；弹层打开时焦点在弹层内，关闭后回到触发元素（`Eval("document.activeElement.dataset.ac")` 与触发元素相等） | M1-3 | 待复核 |
-| AC-M1-3b | 路由点击、直开与刷新保持 | `MYGO_E2E=1`；hash 路由 | 1. `MYGO_E2E=1 go test ./web -run TestM1Routes -v` | 点击 `Eval("document.querySelector('[data-route=explore]').click()")` 后 `Eval("location.hash")` 为 `#/explore` 且 `Eval("document.querySelector('[aria-current=page]').dataset.route")` 为 `explore`；reload 后 hash 仍为 `#/explore`；设 `location.hash='#/nope'` 后 `Eval("!!document.querySelector('[data-role=not-found]')")` 为 true | 未知路由不白屏：`Eval("document.body.children.length")` 大于 0；空路由回落 `#/`（`location.hash` 为空或 `#/`） | M1-3 | 待复核 |
+| AC-M1-2c | 对比度基线不退化（机器判定） | `scripts/contrast-baseline.json` 存在，键为 `theme|fg|bg`，24 条与 `PAIRS` 一一对应 | 1. `node scripts/contrast.mjs`；2. `node scripts/contrast.mjs --update` 后再跑；3. 调暗 `--color-success` 10% 后重跑；4. 临时删一条 `PAIRS` 后重跑；5. 新增一条配对但不更新基线后重跑 | 1 退出 0 且不修改基线文件（`git diff --exit-code scripts/contrast-baseline.json` 为空）；2 退出 0 且基线 24 条不变或新增；3 退出 1 并打印“低于基线：<key> 现值 vs 基线”；4 退出 1 打印“基线残留：<key>”；5 退出 1 打印“新配对未入基线：<key>”，提示先跑 `--update` | 不带参数运行时写基线视为失败；`--update` 是唯一写基线的入口 | M1-2；ADR-0006 的产物校验同理 | 通过 |
+| AC-M1-3a | 通用组件计数、可访问名与禁用态正确 | `/dev/components` 页；`MYGO_E2E=1` | 1. `MYGO_E2E=1 go test ./web -run TestM1Components -v` | `Eval("document.querySelectorAll('[data-ac]').length")` 为 12；`Eval("[...document.querySelectorAll('[data-ac]')].filter(e => !e.getAttribute('aria-label') && !e.textContent.trim()).length")` 为 0；`Eval("document.querySelectorAll('[data-ac][disabled]').length")` 为 1；`Eval("document.querySelectorAll('[data-ac]:not([disabled])').length")` 为 11；Esc 后 `Eval("document.querySelector('[data-role=layer]')")` 为 null | 删掉某个控件的 aria-label 后测试必须 FAIL（计数 1）；弹层打开时焦点在弹层内，关闭后回到触发元素（`Eval("document.activeElement.dataset.ac")` 与触发元素相等） | M1-3 | 通过 |
+| AC-M1-3b | 路由点击、直开与刷新保持 | `MYGO_E2E=1`；hash 路由 | 1. `MYGO_E2E=1 go test ./web -run TestM1Routes -v` | 点击 `Eval("document.querySelector('[data-route=explore]').click()")` 后 `Eval("location.hash")` 为 `#/explore` 且 `Eval("document.querySelector('[aria-current=page]').dataset.route")` 为 `explore`；reload 后 hash 仍为 `#/explore`；设 `location.hash='#/nope'` 后 `Eval("!!document.querySelector('[data-role=not-found]')")` 为 true | 未知路由不白屏：`Eval("document.body.children.length")` 大于 0；空路由回落 `#/`（`location.hash` 为空或 `#/`） | M1-3 | 通过 |
+| AC-M1-3c | 弹层模态语义与行为一致 | `Layer` 组件；`MYGO_E2E=1` | 1. `MYGO_E2E=1 go test ./web -run TestM1Components -v`（断言在 `TestM1Components` 内，不单独拆用例） | 输出必须含 `=== RUN`；声明 `aria-modal="true"` 时：连按 Tab 20 次后 `Eval("document.querySelector('[data-role=layer]').contains(document.activeElement)")` 恒为 true；在最后一项再按 Tab 回到首个可聚焦元素；在首项按 Shift+Tab 回到最后一项；不声明 `aria-modal` 时：`Eval("!!document.querySelector('[data-role=layer][aria-modal]')")` 为 false | 删掉焦点陷阱但保留 `aria-modal` → 测试必须 FAIL 并报“声明与实际行为不一致”；焦点跑到弹层外 → 同上 | M1-3；无障碍 | 待复核 |
 
 ## 复核记录
 
@@ -48,6 +50,11 @@
   - `check-tokens.mjs` PASS（24 个令牌，亮色覆盖完整，exit 0）；`contrast.mjs` 24 行全达标，最低 5.18，exit 0；
   - 重建产物 sha256 `13cb285ab539…`，与实现方报告一致；
   - 同批复核：`go build`/`go vet`/`go test`、`npm run typecheck`、`check-docs.mjs` 全 exit 0，`git diff --exit-code web/dist` 返回 0（ADR-0006 校验成立）。
+- **2026-11-17，AC-M1-1a/1b，把关复核，结论通过**：干净树 `go build` 退出 0、`git check-ignore web/dist/index.html` 退出 1、可见文件集含 `web/dist`、两次构建 sha256 一致（`13cb285ab539…`）。
+- **2026-11-17，AC-M1-2c/3a/3b，把关复核，结论通过**（提交 `15c7830`，26 文件 992 行）：
+  - 四组 E2E 全 PASS（3.44 / 0.37 / 0.03 / 0.16s），不设开关全 SKIP、包 `ok`、exit 0；
+  - 构建两次 sha256 `e710268b6a83…`；首屏 JS gzip 29.08 KB；
+  - 基线：默认运行不写文件（`git diff --exit-code scripts/contrast-baseline.json` = 0）；`--update` 在存在低于阈值配对时拒绝写入（改 `--color-success` 为 `#0b2e14`，报 `FAIL 基线未写入`，文件哈希不变）；低于基线时报警（`#43c873` 报 `现值 8.81 vs 基线 10.89`）；
 
 ## 对比度配对范围（AC-M1-2a 的判定依据）
 

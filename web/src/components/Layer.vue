@@ -8,11 +8,41 @@ const emit = defineEmits<{ (e: "close"): void }>();
 const panel = ref<HTMLElement | null>(null);
 let returnFocus: HTMLElement | null = null;
 
-// Esc 关闭；监听挂在 document 上，焦点在弹层内任一控件时也能生效。
+// 弹层内可获得焦点的元素，用于 Tab 循环。
+const FOCUSABLE =
+  'a[href], button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])';
+
+// Tab / Shift+Tab 在面板内回绕；面板没有可聚焦元素时焦点留在面板上。
+function trapTab(event: KeyboardEvent): void {
+  const items = Array.from(panel.value?.querySelectorAll<HTMLElement>(FOCUSABLE) ?? []);
+  if (items.length === 0) {
+    event.preventDefault();
+    panel.value?.focus();
+    return;
+  }
+  const first = items[0];
+  const last = items[items.length - 1];
+  const active = document.activeElement as HTMLElement | null;
+  const outside = !panel.value?.contains(active);
+  if (event.shiftKey && (active === first || active === panel.value || outside)) {
+    event.preventDefault();
+    last.focus();
+  } else if (!event.shiftKey && (active === last || outside)) {
+    event.preventDefault();
+    first.focus();
+  }
+}
+
+// Esc 关闭；Tab 循环；监听挂在 document 上，焦点在弹层内任一控件时也能生效。
 function onKeydown(event: KeyboardEvent): void {
-  if (event.key === "Escape" && props.open) {
+  if (!props.open) {
+    return;
+  }
+  if (event.key === "Escape") {
     event.preventDefault();
     emit("close");
+  } else if (event.key === "Tab") {
+    trapTab(event);
   }
 }
 

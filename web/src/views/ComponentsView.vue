@@ -74,7 +74,11 @@ function openLayer(): void {
     </div>
 
     <Layer :open="layerOpen" title="弹层示例" @close="layerOpen = false">
-      <p>按 Esc 或点击遮罩关闭，焦点会回到打开它的按钮。</p>
+      <p>按 Esc 或点击遮罩关闭，Tab 在弹层内循环，关闭后焦点回到打开它的按钮。</p>
+      <div class="row">
+        <Button variant="primary" @click="layerOpen = false">知道了</Button>
+        <Button @click="layerOpen = false">关闭</Button>
+      </div>
     </Layer>
   </section>
 </template>

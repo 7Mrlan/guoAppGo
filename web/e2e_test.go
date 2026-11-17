@@ -253,6 +253,23 @@ func TestM1Components(t *testing.T) {
 		t.Fatalf("the layer did not open with the focus inside it")
 	}
 
+	// Tab 在弹层内回绕，否则 aria-modal 就是对辅助技术的空承诺。
+	const focusables = `[...document.querySelector('[data-role=layer]').querySelectorAll('a[href], button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])')]`
+	forward := `(() => { const items = ` + focusables + `;
+		items[items.length - 1].focus();
+		document.querySelector('[data-role=layer]').dispatchEvent(new KeyboardEvent('keydown', { key: 'Tab', bubbles: true }));
+		return items[0] === document.activeElement ? 'wrapped' : 'stuck'; })()`
+	if got := evalString(t, w, forward); got != "wrapped" {
+		t.Fatalf("Tab from the last control in the layer = %s, want it wrapped to the first", got)
+	}
+	backward := `(() => { const items = ` + focusables + `;
+		items[0].focus();
+		document.querySelector('[data-role=layer]').dispatchEvent(new KeyboardEvent('keydown', { key: 'Tab', shiftKey: true, bubbles: true }));
+		return items[items.length - 1] === document.activeElement ? 'wrapped' : 'stuck'; })()`
+	if got := evalString(t, w, backward); got != "wrapped" {
+		t.Fatalf("Shift+Tab from the first control in the layer = %s, want it wrapped to the last", got)
+	}
+
 	evalString(t, w, `document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true })), 'ok'`)
 	if !waitFor(t, w, `document.querySelector('[data-role=layer]') === null`) {
 		t.Fatalf("the layer is still open after Esc")
