@@ -148,6 +148,28 @@ function checkVersionBaseline() {
       problems.push(`${file}: 未链接 versions.md（唯一事实来源）`);
     }
   }
+
+  // 代码侧版本必须与基准表同源：go.mod 的 mygo 与 package-lock 的 mygo-cli 要一致且都写进 versions.md
+  const versionsText = fs.existsSync(versionsFile) ? fs.readFileSync(versionsFile, "utf8") : "";
+  const goModPath = path.join(ROOT, "go.mod");
+  // go.mod 中 mygo 的模块版本，形如 v0.9.2
+  const goMygoMatch = fs.existsSync(goModPath)
+    ? fs.readFileSync(goModPath, "utf8").match(/github\.com\/egoist\/mygo\s+(v\d+\.\d+\.\d+\S*)/)
+    : null;
+  if (!goMygoMatch) problems.push("go.mod: 未找到 github.com/egoist/mygo 的模块版本");
+  if (goMygoMatch && !versionsText.includes(goMygoMatch[1])) {
+    problems.push(`go.mod 的 mygo ${goMygoMatch[1]} 未写进 versions.md`);
+  }
+  if (!versionsText.includes("mygo-cli")) problems.push("versions.md: 未登记 npm 侧 mygo-cli");
+  const lockPath = path.join(ROOT, "package-lock.json");
+  if (fs.existsSync(lockPath)) {
+    // package-lock 里 mygo-cli 的实装版本，不带 v 前缀
+    const lockVersion = (JSON.parse(fs.readFileSync(lockPath, "utf8")).packages || {})["node_modules/mygo-cli"]?.version;
+    if (!lockVersion) problems.push("package-lock.json: 未找到 node_modules/mygo-cli");
+    else if (goMygoMatch && lockVersion !== goMygoMatch[1].replace(/^v/, "")) {
+      problems.push(`mygo 版本分叉：go.mod ${goMygoMatch[1]} / package-lock mygo-cli ${lockVersion}`);
+    }
+  }
   const detail = problems.length ? problems : `基准 ${shaSet.size} 条 sha，引用一致`;
   record("版本基准确性与一致", problems.length === 0, detail);
 }

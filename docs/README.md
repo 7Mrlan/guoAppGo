@@ -18,6 +18,7 @@ docs/
   adr/0000-template.md                     ADR 模板
   adr/0002-ui-route-webview.md             已接受（条件：R1 B 段不劣于对照组）
   adr/0003-playback-kernel-hlsjs-proxy.md  已接受（hls.js + 本地代理，暂不嵌 mpv）
+  adr/0006-frontend-vue-vite.md            已接受（Vue 3 + TS + Vite，产物进库）
   testing/acceptance.md                    功能验收标准的写法与清单
   testing/go-test-plan.md                  go test 用例清单与覆盖率口径
   testing/regression.md                    发版前回归清单（含结果记录）

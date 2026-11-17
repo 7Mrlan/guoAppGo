@@ -10,6 +10,17 @@
 | 桌面框架 | egoist/mygo | `v0.9.2` | `25ce62f4d357cd6d29da04300e3fbc352d79daa4` | 2026-11-16T12:54:29Z |
 | JS 运行时 | MoeForge/moejs | `v0.1.1` | `b7f49c1f7e502a593d65d4cd9ae3a0b2c3bda070` | 2026-11-15T17:05:00Z |
 
+### mygo 的两个来源
+
+同一个 MyGo 有两条引入路径，版本必须一致：
+
+| 来源 | 声明位置 | 当前版本 | 用途 |
+| --- | --- | --- | --- |
+| Go 模块 | `go.mod`：`require github.com/egoist/mygo v0.9.2`、`tool github.com/egoist/mygo/cmd/mygo` | `v0.9.2` | 运行时、`go tool mygo` 开发命令、类型绑定 |
+| npm 包 | `package.json` devDependencies：`mygo-cli 0.9.2`，实装版本由 `package-lock.json` 锁定 | `0.9.2` | 仅 `mygo.config.ts` 的 `defineConfig` 类型与前端侧工具 |
+
+两者是同一项目的两种分发，不是两个依赖：npm 侧的版本号不带 `v` 前缀。任一升级必须同时改另一侧并写 ADR，否则 `mygo.config.ts` 的类型与 `go tool mygo` 的实际行为会分叉。`node scripts/check-docs.mjs` 会校验两边一致。
+
 ## 锁版规则
 
 1. 拉代码按 tag，不按分支：
