@@ -2,6 +2,8 @@
 
 三个探针，对应 `docs/spike-stack.md` 的 §3、§5、§6。都不属于产品代码，只为让结论可复现。
 
+macOS 上的跑法单独压成一页：[MAC-RUN.md](MAC-RUN.md)（拿到 Mac 的人照着敲即可）。
+
 | 目录 | 用途 | 产出 |
 |---|---|---|
 | `moejs-eval` | moejs v0.1.1 嵌入 Go、调用 JS、异常与超时 | stdout |

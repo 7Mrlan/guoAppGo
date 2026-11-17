@@ -38,6 +38,12 @@ docs/
 
 三个探针的依赖版本钉死为 mygo `v0.9.2`（`25ce62f`）、moejs `v0.1.1`（`b7f49c1`），与 [versions.md](versions.md) 一致；升级须先改 versions.md 再改探针。
 
+### macOS 真机一页单
+
+[MAC-RUN.md](../tools/spike/MAC-RUN.md)：在个人 Mac 上用 10 分钟跑完三项验证的操作单——三个探针的本机编译方式、`go tool mygo dev` 与裸二进制的取舍、`features.json` 与 `mse-chain.json` 的回传方式、字段判读与通过线（首帧 ≤2000 ms、seek ≤1500 ms、内存按私有内存计）。
+
+它销的是 [spike-stack.md](spike-stack.md) §5.2 与 §9 的 macOS 挂账。产出未回传前，凡涉及 macOS 的项按下方纪律第 7 条写 **未验证**。
+
 ## 文档纪律
 
 1. 文档只写事实、决定、可复核的引用。不写"我们计划""未来可能"。
@@ -46,6 +52,7 @@ docs/
 4. 代码行为变化与文档修改在同一次提交内完成。提交权在把关。
 5. 版本号、路径、依赖名必须可查，不得凭印象填写。
 6. 版本一律按 tag 锁定并附 commit sha，来源见 [versions.md](versions.md)。禁止 `@latest`、禁止按 main 分支下结论。
+7. macOS 未拿到真机前，凡涉及 WKWebView 实际行为、`.app` 打包、签名、公证的项一律写 **未验证**，不得写"已通过"；Windows 实测结论不得外推为两端结论。
 
 ## 第一轮产出的填写要求
 
