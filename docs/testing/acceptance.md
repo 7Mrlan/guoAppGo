@@ -23,6 +23,8 @@
 
 来源：`evaluation-plan.md` §6.3 的 M1（乐观 4 / 现实 7 / 悲观 12 人天）。三条子任务按依赖顺序推进，前一条的出口条件不满足不进入下一条。
 
+**M1 出口（2026-11-17）：八条 AC 全部通过**（1a/1b/2a/2b/2c/3a/3b/3c），其中 2a/2b/2c/3a/3b/3c 由把关独立复跑，记录见「复核记录」。
+
 | 子任务 | 范围 | 人天 | 出口条件 |
 | --- | --- | ---: | --- |
 | M1-1 构建与嵌入 | TS 构建链、`web/dist` 原子产出、`go:embed`、`go tool mygo dev` 开发回路 | 1.5 | AC-M1-1a、AC-M1-1b 通过 |
@@ -40,7 +42,7 @@
 | AC-M1-2c | 对比度基线不退化（机器判定） | `scripts/contrast-baseline.json` 存在，键为 `theme|fg|bg`，24 条与 `PAIRS` 一一对应 | 1. `node scripts/contrast.mjs`；2. `node scripts/contrast.mjs --update` 后再跑；3. 调暗 `--color-success` 10% 后重跑；4. 临时删一条 `PAIRS` 后重跑；5. 新增一条配对但不更新基线后重跑 | 1 退出 0 且不修改基线文件（`git diff --exit-code scripts/contrast-baseline.json` 为空）；2 退出 0 且基线 24 条不变或新增；3 退出 1 并打印“低于基线：<key> 现值 vs 基线”；4 退出 1 打印“基线残留：<key>”；5 退出 1 打印“新配对未入基线：<key>”，提示先跑 `--update` | 不带参数运行时写基线视为失败；`--update` 是唯一写基线的入口 | M1-2；ADR-0006 的产物校验同理 | 通过 |
 | AC-M1-3a | 通用组件计数、可访问名与禁用态正确 | `/dev/components` 页；`MYGO_E2E=1` | 1. `MYGO_E2E=1 go test ./web -run TestM1Components -v` | `Eval("document.querySelectorAll('[data-ac]').length")` 为 12；`Eval("[...document.querySelectorAll('[data-ac]')].filter(e => !e.getAttribute('aria-label') && !e.textContent.trim()).length")` 为 0；`Eval("document.querySelectorAll('[data-ac][disabled]').length")` 为 1；`Eval("document.querySelectorAll('[data-ac]:not([disabled])').length")` 为 11；Esc 后 `Eval("document.querySelector('[data-role=layer]')")` 为 null | 删掉某个控件的 aria-label 后测试必须 FAIL（计数 1）；弹层打开时焦点在弹层内，关闭后回到触发元素（`Eval("document.activeElement.dataset.ac")` 与触发元素相等） | M1-3 | 通过 |
 | AC-M1-3b | 路由点击、直开与刷新保持 | `MYGO_E2E=1`；hash 路由 | 1. `MYGO_E2E=1 go test ./web -run TestM1Routes -v` | 点击 `Eval("document.querySelector('[data-route=explore]').click()")` 后 `Eval("location.hash")` 为 `#/explore` 且 `Eval("document.querySelector('[aria-current=page]').dataset.route")` 为 `explore`；reload 后 hash 仍为 `#/explore`；设 `location.hash='#/nope'` 后 `Eval("!!document.querySelector('[data-role=not-found]')")` 为 true | 未知路由不白屏：`Eval("document.body.children.length")` 大于 0；空路由回落 `#/`（`location.hash` 为空或 `#/`） | M1-3 | 通过 |
-| AC-M1-3c | 弹层模态语义与行为一致 | `Layer` 组件；`MYGO_E2E=1` | 1. `MYGO_E2E=1 go test ./web -run TestM1Components -v`（断言在 `TestM1Components` 内，不单独拆用例） | 输出必须含 `=== RUN`；声明 `aria-modal="true"` 时：连按 Tab 20 次后 `Eval("document.querySelector('[data-role=layer]').contains(document.activeElement)")` 恒为 true；在最后一项再按 Tab 回到首个可聚焦元素；在首项按 Shift+Tab 回到最后一项；不声明 `aria-modal` 时：`Eval("!!document.querySelector('[data-role=layer][aria-modal]')")` 为 false | 删掉焦点陷阱但保留 `aria-modal` → 测试必须 FAIL 并报“声明与实际行为不一致”；焦点跑到弹层外 → 同上 | M1-3；无障碍 | 待复核 |
+| AC-M1-3c | 弹层模态语义与行为一致 | `Layer` 组件；`MYGO_E2E=1` | 1. `MYGO_E2E=1 go test ./web -run TestM1Components -v`（断言在 `TestM1Components` 内，不单独拆用例） | 输出必须含 `=== RUN`；声明 `aria-modal="true"` 时：连按 Tab 20 次后 `Eval("document.querySelector('[data-role=layer]').contains(document.activeElement)")` 恒为 true；在最后一项再按 Tab 回到首个可聚焦元素；在首项按 Shift+Tab 回到最后一项；不声明 `aria-modal` 时：`Eval("!!document.querySelector('[data-role=layer][aria-modal]')")` 为 false | 删掉焦点陷阱但保留 `aria-modal` → 测试必须 FAIL 并报“声明与实际行为不一致”；焦点跑到弹层外 → 同上 | M1-3；无障碍 | 通过 |
 
 ## 复核记录
 
@@ -55,6 +57,8 @@
   - 四组 E2E 全 PASS（3.44 / 0.37 / 0.03 / 0.16s），不设开关全 SKIP、包 `ok`、exit 0；
   - 构建两次 sha256 `e710268b6a83…`；首屏 JS gzip 29.08 KB；
   - 基线：默认运行不写文件（`git diff --exit-code scripts/contrast-baseline.json` = 0）；`--update` 在存在低于阈值配对时拒绝写入（改 `--color-success` 为 `#0b2e14`，报 `FAIL 基线未写入`，文件哈希不变）；低于基线时报警（`#43c873` 报 `现值 8.81 vs 基线 10.89`）；
+
+- **2026-11-17，AC-M1-3c，把关复核，结论通过**：`MYGO_E2E=1 go test ./web -run TestM1Components -v` 输出含 `--- PASS: TestM1Components (3.43s)`，Tab/Shift+Tab 回绕断言均在 `TestM1Components` 内；此前"声明与行为不一致"的描述作废。
 
 ## 对比度配对范围（AC-M1-2a 的判定依据）
 
