@@ -214,13 +214,16 @@ README 实测（2026-10-01 采集，new-api 插件负载）：
 | API 稳定性 | 正式版只有 `v0.1.0`（11-09）与 `v0.1.1`（11-16）；两版之间 7 commits / 85 文件，release notes 无 breaking 声明 | 0.x 语义上**不承诺稳定**，但目前未见破坏性变更 |
 | 生产案例 / 活跃度 | 712 star、6 位贡献者、15 个 issue 全部 closed（中位 20 小时）、7 周 4 个 release | 活跃，但**查不到公开生产案例**（README 未列） |
 | 明天改 API / 停更的代价 | 站源模块层被 `module_host.go`（406 行）+ `module_script.go`（17 KB）包住；全仓 `goja.` 引用仅 51 处 | 可隔离，见下 |
+| 仓库年龄与提交量 | 首个提交 2026-09-26，至 2026-11-16 共 **28 个提交**；13 个 tag（alpha.1~alpha.11 + `v0.1.0` + `v0.1.1`） | 一个半月的新项目，迭代密、公开样本小 |
+| 版本号是否等于兼容承诺 | `v0.1.0..v0.1.1` 的 7 个提交里有一条 `feat: add context (#10)`——**patch 版本里带新特性**；`git diff` 无导出函数/类型删除，删的只是小写内部函数 | 版本号不能当兼容性承诺用 |
+| 依赖链 | 自身 `go.mod` 依赖 `github.com/MoeForge/moego v0.1.0-alpha.3` | **正式版里挂 alpha 依赖**，比它自己的版本号更实质 |
 
 **隔离方案**：定义 `script.Engine` 接口（`Execute(script) (Value, error)`、`RegisterHost(fn)`、`Call(export, args)`、`Close()`），goja 与 moejs 各一个实现；业务与站源模块不 import 任何引擎包。切换/回退成本约 **5~8 人天**。停更则回退 goja，业务零改动。
 
 ### 4.5 结论
 
 - **v1 已定单源，moejs 出局**（Chief 2026-11-17 拍板，出处：本群当轮决定）：模块系统整层不做，goja 的约 880 行 JS 桥不替换，moejs 不进 `go.mod`、ADR-0009 不写。
-- 若 v2 恢复多站源：默认实现仍是 goja（现有生产验证过的），moejs 作为第二实现，用"同一批站源模块在两种引擎下输出 diff 为 0"作为切换门槛（见 R4）。
+- 若 v2 恢复多站源：默认实现仍是 goja（现有生产验证过的），moejs 作为第二实现，用"同一批站源模块在两种引擎下输出 diff 为 0"作为切换门槛（见 R4）；上面"28 个提交 / patch 带 feat / 依赖 moego alpha.3"三条要原样写进 ADR 的风险段。
 - 若要走第二步，先把它放进 `script.Engine` 接口后，不让 moejs 的 `Value`/`Runtime` 类型泄漏到业务代码，避免第三次迁移。
 
 ---
