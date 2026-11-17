@@ -1,6 +1,5 @@
 <script setup lang="ts">
-// The M1-1 shell: enough markup for the acceptance checks to assert on, no
-// product pages yet.
+// 应用外壳：标题、启动说明与 bridge 状态占位。
 const status = "System 服务已绑定，页面尚未调用（M0）";
 </script>
 
