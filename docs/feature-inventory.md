@@ -111,9 +111,10 @@ git -C guoapp diff --name-status 4c7aab6 5a7a116 -- lib test
 
 **2.2 站源已经是运行时可插拔的 JS 模块。**
 模块 = `manifest.json` + `main.js` 的 zip，CommonJS 写法，`module.exports` 导出 `categories/catalogPage/search/detail/resolveMedia/...`，运行时 `github.com/dop251/goja`（`native/core/module_script.go:14,23-33`；示例 `native/module_example/jsexample/`）。manifest 声明 `runtime:"js"`、`api:1`、`capabilities`、`hosts` 域名白名单、`adult`、`allowEmptyCatalog`。模块有实例池（上限 4）、60s 超时、5s 快取超时（`module_script.go:20-22`）。模块商店索引是公开 GitHub JSON（`native/core/module_index.go:25-26`，raw + jsDelivr 双源）。
-**推论：`moejs` 要回答的问题不是"要不要引入 JS 引擎"，而是"要不要用 moejs 替掉 goja"。** 这是纯替换题，不是新增能力题，评估口径应该按"迁移成本 + API 兼容性"算，而不是按"引入新依赖的风险"算。
+**决策（2026-11-17，Chief 拍板，落地于本轮讨论）：v1 只做红果，模块系统整层不做，moejs 不进主干，ADR-0009 不写。** 下面的分析保留，作为 v2 多源复评的依据。
+**推论：若 v2 恢复多源，`moejs` 要回答的问题不是"要不要引入 JS 引擎"，而是"要不要用 moejs 替掉 goja"。** 这是纯替换题，不是新增能力题，评估口径应该按"迁移成本 + API 兼容性"算，而不是按"引入新依赖的风险"算。
 
-顺带给出隔离层的落点（供 moejs 的 ADR 用，不代替探路的结论）：现在跑一段站源 JS 的入口只有两处——`module_script.go` 的 `jsProvider`（建 VM、加载 CommonJS 包装、取 `module.exports`、调用时 JSON 编解码）和 `module_host.go`（给 JS 用的 `host` 对象：`fetch`、`exclusive`、`dramaId`/`chapterId` 等）。**`Provider` 接口以下（`provider_*.go` 1,545 行）与 JS 引擎无关**，已经天然被隔离。也就是说替换 goja 的爆炸半径是这两个文件（475 + 406 行），不是整个 2,614 行的 `module_*`。这一点直接回答“能不能用一层自己的适配层隔离”：能，而且现在就已经隔着，代价是改写约 880 行、并验证 host 对象的语义等价（`fetch` 的超时/限流/重定向/状态码白名单最容易被新引擎的差异咬到）。
+顺带给出隔离层的落点（供 v2 的 moejs ADR 用，不代替探路的结论）：现在跑一段站源 JS 的入口只有两处——`module_script.go` 的 `jsProvider`（建 VM、加载 CommonJS 包装、取 `module.exports`、调用时 JSON 编解码）和 `module_host.go`（给 JS 用的 `host` 对象：`fetch`、`exclusive`、`dramaId`/`chapterId` 等）。**`Provider` 接口以下（`provider_*.go` 1,545 行）与 JS 引擎无关**，已经天然被隔离。也就是说替换 goja 的爆炸半径是这两个文件（475 + 406 行），不是整个 2,614 行的 `module_*`。这一点直接回答“能不能用一层自己的适配层隔离”：能，而且现在就已经隔着，代价是改写约 880 行、并验证 host 对象的语义等价（`fetch` 的超时/限流/重定向/状态码白名单最容易被新引擎的差异咬到）。
 
 **2.3 转码/合成在 Dart 侧，不在 Go。**
 `ffmpeg_kit_flutter_new_min_gpl 2.6.7` 承担：下载完成后 mp4 转封装、m3u8 合并、probe 时长、封面解码（`lib/media_pipeline.dart:41-123`、`lib/download_converter.dart:81-148`、`lib/cover_decoder.dart:12`）。Go 侧只做 HLS 抓取与 CENC 解密（`app_download_hls.go`、`media_cenc.go`）。
@@ -202,10 +203,10 @@ git -C guoapp diff --name-status 4c7aab6 5a7a116 -- lib test
 
 | ID | 功能块 | 证据 | 桌面相关性 | 级别 | 规模 |
 | --- | --- | --- | --- | --- | --- |
-| E1 | 模块管理（已安装/在线仓库/内置/手动四页签、安装/更新/卸载/启用、站源开关） | `ui/modules/modules_page.dart` 797、`module_install.dart` 177、`Go module_install.go` 291、`module_loader.go` 248、`module_bundled.go` 150、`module_capabilities.go` 135 | 必做（多站源的前提） | P0 | L |
-| E2 | JS 站源运行时（goja、CommonJS 导出、实例池 4、60s/5s 超时、缓存、host 白名单、能力声明） | `Go module_script.go` 475、`module_host.go` 406、`module_example/jsexample/` | 必做 | P0 | L |
-| E3 | 模块商店索引（GitHub raw + jsDelivr 双源、限级/成人标记、安装全部） | `Go module_index.go` 164、`module_index.go:25-30` | 必做 | P0 | S |
-| E4 | 站源账号与设备注册（青空登录、设备注册、授权、登出） | `ui/settings/sorani_account_view.dart` 527、`sorani_account.dart` 74、`ui/device_registration.dart` 148、`Go app_devices.go` 214、`sourceAccount` op | 可做（依赖具体站源） | P1 | M |
+| E1 | 模块管理（已安装/在线仓库/内置/手动四页签、安装/更新/卸载/启用、站源开关） | `ui/modules/modules_page.dart` 797、`module_install.dart` 177、`Go module_install.go` 291、`module_loader.go` 248、`module_bundled.go` 150、`module_capabilities.go` 135 | **砍**（v1 单源已定） | P2 | — |
+| E2 | JS 站源运行时（goja、CommonJS 导出、实例池 4、60s/5s 超时、缓存、host 白名单、能力声明） | `Go module_script.go` 475、`module_host.go` 406、`module_example/jsexample/` | **砍**（moejs 随之出局） | P2 | — |
+| E3 | 模块商店索引（GitHub raw + jsDelivr 双源、限级/成人标记、安装全部） | `Go module_index.go` 164、`module_index.go:25-30` | **砍**（无模块即无商店） | P2 | — |
+| E4 | 站源账号与设备注册（青空登录、设备注册、授权、登出） | `ui/settings/sorani_account_view.dart` 527、`sorani_account.dart` 74、`ui/device_registration.dart` 148、`Go app_devices.go` 214、`sourceAccount` op | **砍**（青空是模块源，随 E1–E3 一起消失） | P2 | — |
 
 ### F. 设置与数据
 
@@ -242,11 +243,14 @@ git -C guoapp diff --name-status 4c7aab6 5a7a116 -- lib test
 
 **D1/D3 下载 —— P0，XL，跨两个语言栈。** Go 侧完成抓取/解密/命名，Dart 侧完成转封装。**重写时 D3 的 ffmpeg 部分等于从零补**（§2.3）。原应用"每集下载完自动转成普通 mp4，可直接拷出"是这款产品的核心卖点之一（README:60），不是可选功能。
 
-**E1/E2/E3 模块系统 —— P0，但有一个前置决策。**
-原应用 2.0 之后**本体只内置红果**，其余站源全靠模块（README:20、CHANGELOG `2.0.1+113`）。这意味着：不做模块系统 = 只有红果一个源。三种可能：
-- 做模块系统 → 功能等价，但要把 goja 那套（2,614 行 + JS 模块格式 + 商店索引）搬过来，并且要决定 moejs 是否替换 goja（探路的题目）。
-- 只保留内置红果、不做模块 → 省下整块 E（约 2.6k 行 Go + 974 行 UI），但产品定位从"多源影视聚合"降为"红果客户端"，**这是产品决策，不是技术决策，必须问用户**。
+**E1/E2/E3 模块系统 —— 已定：v1 单源，整层不做（P0 → 砍）。**
+原应用 2.0 之后**本体只内置红果**，其余站源全靠模块（README:20、CHANGELOG `2.0.1+113`）。**决策（2026-11-17，Chief 拍板，落地于本轮讨论）**：v1 只做红果，模块系统整层不做，moejs 不进主干，ADR-0009 不写。理由不是省人天，是砍掉一整层没人验证过的 alpha 依赖（moejs 公开生产案例为 0），多源这个差异点放 v2 再评估，代价只是站源单点。
+保留下面这段用于 v2 复评：
+- 做模块系统 → 功能等价，但要把 goja 那套（2,614 行 + JS 模块格式 + 商店索引）搬过来，并且要决定 moejs 是否替换 goja。
+- 只保留内置红果、不做模块 → 省下整块 E（约 2.6k 行 Go + 974 行 UI + 1,545 行 provider 适配层里的模块分支）。
 - 内置若干源、不开放插件 → 折中，但要把 JS 站源改写成 Go（`guoapp-sources` 私有仓库里原本就是 Go，见 `CLAUDE.md`）。
+
+**连带影响：C7 弹幕的优先级要往上提。** 单源之后红果是唯一内容来源，而弹幕只有红果在线播放有（README:48），它从"多源里的一个体验项"变成"唯一源的差异化体验"。本清单仍按 P1 记，但 v1 范围评审时请把 C7 和 C2 放一起看，不要按"可有可无"处理。
 
 **F2 代理 —— P0。** 站源可达性直接依赖代理（HTTP/HTTPS/SOCKS5 + 系统代理跟随 + 浏览器指纹伪装，`network_browser.go` 211 行用 `bogdanfinn/tls-client`）。这不是"高级设置"，是没有它部分源直接 403（CHANGELOG `2.0.1+113` 第 19 条就修的是这个）。
 
@@ -264,11 +268,12 @@ git -C guoapp diff --name-status 4c7aab6 5a7a116 -- lib test
 | D4 旧版分集合并 + 批量合并队列 | ~470 行 | 只服务旧版本地数据（README:61） | 老用户旧下载不自动合并，需手动处理 |
 | D7 Android 前台服务后台下载 | 126 行 + 整个 `flutter_foreground_task` 依赖 | Android 专属 | 无 |
 | B10 多用户 + 权限 + 密码 | ~970 行 UI + `app_data` 里的用户域 | 桌面单人使用场景弱；且原应用多用户是为"电视/家庭共享"设计的 | 家庭共用一台 Mac 的场景会退化为单用户 |
-| E4 站源账号（青空等） | ~750 行 | 只对个别站源必要 | 该站源不可登录，功能受限 |
+| E1+E2+E3 站源模块系统（模块管理 UI + JS 运行时 + 商店索引） | Go ~3.6k 行（`module_*` 2,614 + `module_index`）+ 974 行 UI | **v1 单源已定**（Chief 拍板），模块层整层不做 | 只有红果一个源，站源成单点；多源放 v2 复评 |
+| E4 站源账号（青空等） | ~750 行 | 青空是模块源，随 E1–E3 一起消失 | 无（v1 不需要） |
 | C8 投屏 | ~1k 行（414 UI + 439 Go + lan server） | 桌面投屏是长尾；且 DLNA 依赖同一局域网 | 想电视上看要自己拷文件 |
 | A4 便携数据 / Windows 数据迁移 | ~120 行 | 历史包袱（从便携版迁到用户目录） | 新应用没有历史数据，天然不需要 |
 
-**砍完这几项，原应用 37,219 行 Dart 里大约 8–9k 行直接归零，且都属于"高耦合、改一处要连带改多处"的部分，省下的维护成本比行数更多。**
+**砍完这几项，原应用 37,219 行 Dart 里约 9–10k 行直接归零（比初稿的 8–9k 多了模块系统那 974 行 UI），另加 Go 侧 ~3.6k 行不用搬。且砍掉的多是"高耦合、改一处要连带改多处"的部分，省下的维护成本比行数更多。**
 
 ---
 
@@ -334,19 +339,21 @@ git -C guoapp diff --name-status 4c7aab6 5a7a116 -- lib test
 1. **壳与导航**：A1 A2 A3 A4 A5 A6（桌面单态）→ 对应 M+S 若干
 2. **浏览闭环**：B1 B2 B3 B4 B5 B6 B11
 3. **追剧与记录**：B8 B9（含后台轮询）
-4. **播放**：C1 C2 C5 C9（+C6 C7 视取舍）
+4. **播放**：C1 C2 C5 C9（+C6 C7 视取舍；单源后 C7 弹幕权重上调，见 §5）
 5. **下载**：D1 D2 D3 D6 D8（+D5 简化版）
-6. **站源与网络**：E1 E2 E3 F2（+E4）
+6. **内置红果与网络**：内置红果 provider 适配 + F2 代理（v1 单源已定，E1–E4 不做）
 7. **设置与数据**：F1 F3 F4 F5 F6 A5
 
-**Go 核心复用不计入以上任何一张**：`native/` 13,116 行里，`app_*`（6,381）与 `provider_*`（1,545）基本可直接沿用，`module_*`（2,614）取决于 moejs 决策，`app_stream`/`app_cast`/`media_cenc`（约 1.4k）可沿用。**但"沿用"不等于零成本**：现在的 Go 是库，要改成主程序并重新定义生命周期与并发模型，这笔"改造费"应单列一张工单，不要摊进功能里。
+**Go 核心复用不计入以上任何一张**：`native/` 13,116 行里，`app_*`（6,381）与 `provider_*`（1,545）基本可直接沿用，`app_stream`/`app_cast`/`media_cenc`（约 1.4k）可沿用；`module_*`（2,614）按 v1 单源**不搬**。**但"沿用"不等于零成本**：现在的 Go 是库，要改成主程序并重新定义生命周期与并发模型，这笔"改造费"应单列一张工单，不要摊进功能里。
 
 ---
 
 ## 11. 需要产品确认的问题（按阻塞程度排）
 
-1. **v1 到底要不要多站源？**（阻塞 E 整块 ≈ 3.6k 行 + moejs 决策）只做内置红果，还是保留 JS 模块系统？这个答案直接决定产品定位与工期量级。
-2. **播放器路线定没定？**（阻塞 C1/C2 全部估算）libmpv(cgo) / webview video / 外部进程，三条路的工期差 2 倍以上。
+**已定（2026-11-17，Chief 拍板，本群讨论）：v1 只做红果单源。** 模块系统整层不做，moejs 不进主干，ADR-0009 不写。原问题留档如下，不再待决。
+
+1. ~~**v1 到底要不要多站源？**~~ → **已定：单源。** 代价是站源成单点、少了"多源"这个差异点；多源放 v2 复评（见 §2.2、§5 E 段）。连带影响：C7 弹幕从"体验项"上升为唯一源的差异化体验，v1 范围评审时与 C2 一起看。
+2. **播放器路线定没定？**（阻塞 C1/C2 全部估算）libmpv(cgo) / webview video / 外部进程，三条路的工期差 2 倍以上。**现状：等 R0（播放能否塞进 webview）的 spike 结论，暂不锁定**，判定门槛与失败路径见 `evaluation-plan.md` 第 7 节。给 R0 补一条方法要求：**必须拿原 Flutter 应用作对照组**（同源、同网络、同 30 分钟），否则 R0 失败时分不清是"webview 撑不住"还是"tag 基线自带的取流缺陷被搬过来了"（§0 第 4 点：2.0.2 修的正是取流/重连），会把架构问题误判成实现问题。
 3. **ffmpeg 允许随包分发吗？**（阻塞 D3）涉及安装包体积（几十 MB）、macOS 公证、GPL 传染性（原项目本身是 GPL-3.0，新项目许可证未定）。
 4. **要不要兼容旧版备份？**（阻塞 F4）不兼容 = 老用户丢追剧与记录；兼容 = 要读懂旧格式。
 5. **多用户要不要？**（阻塞 B10 ≈ 970 行 UI）桌面单人场景弱，但原应用按家庭共享设计的。
