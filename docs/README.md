@@ -6,15 +6,21 @@
 
 ```
 docs/
-  README.md              本文件：索引 + 文档纪律 + 第一轮产出的填写要求
-  versions.md            版本基准：三个依赖的 tag + commit sha，唯一事实来源
-  architecture.md        架构：模块划分、进程/线程模型、IPC、数据流
-  platform.md            macOS arm64 与 Windows 11 x64 的差异清单
-  adr/                   ADR 目录：编号规则、模板、标题清单
-  testing/
-    acceptance.md        功能验收标准的写法与清单
-    go-test-plan.md      go test 用例清单与覆盖率口径
-    regression.md        发版前回归清单（含结果记录）
+  README.md                                本文件：索引 + 文档纪律 + 产出填写要求
+  versions.md                              版本基准：三个依赖的 tag + commit sha，唯一事实来源
+  architecture.md                          架构：模块划分、进程/线程模型、IPC、数据流
+  platform.md                              macOS arm64 与 Windows 11 x64 的差异清单
+  evaluation.md                            评估一：0 版本基准 → 1 结论 → 2 规模 → 3 MyGo → 4 moejs → 附录 A
+  evaluation-plan.md                       评估二：5 路线 → 6 工期 → 7 风险与验证 → 8 待验证 → 附录 B
+  feature-inventory.md                     功能块清单与 P0/P1/P2 分级
+  spike-stack.md                           可行性验证结果与踩坑
+  adr/README.md                            ADR 编号规则、模板入口、标题与状态清单
+  adr/0000-template.md                     ADR 模板
+  adr/0002-ui-route-webview.md             已接受（条件：R1 B 段不劣于对照组）
+  adr/0003-playback-kernel-hlsjs-proxy.md  已接受（hls.js + 本地代理，暂不嵌 mpv）
+  testing/acceptance.md                    功能验收标准的写法与清单
+  testing/go-test-plan.md                  go test 用例清单与覆盖率口径
+  testing/regression.md                    发版前回归清单（含结果记录）
 ```
 
 第一轮评估产出（不属于上面固定骨架，属于交付物）。**入口固定为 [evaluation.md](evaluation.md)，按下列顺序读**：
@@ -43,6 +49,23 @@ docs/
 [MAC-RUN.md](../tools/spike/MAC-RUN.md)：在个人 Mac 上用 10 分钟跑完三项验证的操作单——三个探针的本机编译方式、`go tool mygo dev` 与裸二进制的取舍、`features.json` 与 `mse-chain.json` 的回传方式、字段判读与通过线（首帧 ≤2000 ms、seek ≤1500 ms、内存按私有内存计）。
 
 它销的是 [spike-stack.md](spike-stack.md) §5.2 与 §9 的 macOS 挂账。产出未回传前，凡涉及 macOS 的项按下方纪律第 7 条写 **未验证**。
+
+## 文档自检
+
+```
+node scripts/check-docs.mjs
+```
+
+无外部依赖，需 Node 18+。退出码 0 全过、1 有失败，失败项逐条打印 `文件:行号` 与原因。
+
+| 检查项 | 规则 |
+| --- | --- |
+| 链接与文件形态 | 所有 md 的相对链接目标必须存在；文件必须 UTF-8、无 BOM、纯 LF、末尾有换行 |
+| 章节编号连续性 | [evaluation.md](evaluation.md) 为 0–4 + 附录 A，[evaluation-plan.md](evaluation-plan.md) 为 5–8 + 附录 B，编号不得跳号或重起 |
+| 版本基准确性与一致 | [versions.md](versions.md) 必须含三个 tag 与 40 位 sha；引用 sha 的文档必须有"## 0. 版本基准"节、必须链接 versions.md、且 sha 不得出自基准之外 |
+| README 登记 | 目录树与链接里登记的文件必须存在；`docs/` 下每个 md 必须在本文登记 |
+
+改文档、增删文件、调整章节编号后必须跑一遍；检查失败不得提交。
 
 ## 文档纪律
 

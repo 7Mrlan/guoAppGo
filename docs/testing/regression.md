@@ -17,6 +17,7 @@
 | RG-09 | 签名与公证校验 | mac | `codesign -dv --verbose=4` / `spctl -a -vv` | | | |
 | RG-10 | 自动更新从上一版升级成功 | mac / win | | | | |
 | RG-11 | `go test ./...` 全绿 + 覆盖率达标 | 通用 | | | | |
+| RG-12 | 文档自检 | 通用 | `node scripts/check-docs.mjs` 退出码 0 | | | |
 
 ## 结果规则
 
