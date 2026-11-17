@@ -17,7 +17,7 @@
 | ADR-0003 | 视频播放内核 | 用系统媒体框架、自带解码还是 webview `<video>` + hls.js | spike-stack.md §5、§6 | 已接受（R1 不达标则重开本 ADR 改选嵌 mpv）：正文 [`0003-playback-kernel-hlsjs-proxy.md`](0003-playback-kernel-hlsjs-proxy.md) |
 | ADR-0004 | 流媒体协议与格式支持范围 | HLS/m3u8、DASH、直链 mp4、字幕轨，各自支持到什么程度 | feature-inventory.md 中播放相关条目 | 提议 |
 | ADR-0005 | 主进程与前端/JS 的 IPC 协议 | 消息格式、版本字段、请求响应、事件、超时与错误码 | ADR-0002 已选 webview，本条为 v1 必做 | 提议 |
-| ADR-0006 | 前端技术选型与资源打包 | 框架、构建产物、静态资源如何嵌入单文件 | ADR-0002 | 提议 |
+| ADR-0006 | 前端技术选型与资源打包 | 框架、构建产物、静态资源如何嵌入单文件 | ADR-0002 | **已接受**：Vue 3 + TS + Vite，产物进库；正文 [`0006-frontend-vue-vite.md`](0006-frontend-vue-vite.md) |
 | ADR-0007 | 数据持久化：存储形态与迁移 | SQLite 还是文件；schema 版本与迁移策略；写入时机与损坏恢复 | feature-inventory.md 中收藏/历史/设置 | 提议 |
 | ADR-0008 | 网络层与源解析 | HTTP 客户端、并发上限、超时/重试、UA/Referer、代理、限流 | evaluation.md 中原应用解析逻辑 | 提议 |
 | ADR-0009 | 是否保留插件/脚本能力 | moejs 到底承载什么；不要它的代价；保留它的沙箱与权限边界 | evaluation.md §3 | **不适用**：v1 单源，模块层不做；v2 恢复多源时另立 |

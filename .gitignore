@@ -18,6 +18,9 @@ coverage.html
 
 # 依赖与缓存
 node_modules/
+web/.dist-tmp/
+web/.dist-old/
+.mygo/
 
 # 系统
 .DS_Store
