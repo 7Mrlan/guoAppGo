@@ -22,9 +22,21 @@ docs/
 1. [evaluation.md](evaluation.md) — 探路（一）：0 版本基准 → 1 结论 → 2 原始规模 → 3 MyGo → 4 moejs → 附录 A 复现命令
 2. [evaluation-plan.md](evaluation-plan.md) — 探路（二）：5 路线取舍 → 6 工作量估算 → 7 风险与验证 → 8 查不到/待验证 → 附录 B
 3. [feature-inventory.md](feature-inventory.md) — 理清：功能块清单与优先级
-4. `docs/spike-stack.md` — 戈：技术栈最小验证的命令与结果（待产出，文件尚未创建）
+4. [spike-stack.md](spike-stack.md) — 戈：0 版本基准 → 1 环境阻塞 → 2 MyGo → 3 moejs → 4 交叉编译 → 5 MediaSource → 6 MSE 实测 → 7 坑 → 8 结论 → 9 未覆盖
 
 评估两份是同一份评估按章节边界切开，不是两份独立报告：章节编号连续（0–4 接 5–8，不重起），两文互相链接，任一处链接失效即视为断链。`evaluation-plan.md` 的数据与结论一律引用 `evaluation.md`，不得各自另立一套数字。
+
+## 验证脚手架
+
+可行性验证的可执行部分在 [`tools/spike/`](../tools/spike/README.md)，三个探针分别对应 [spike-stack.md](spike-stack.md) §3、§5、§6。不属于产品代码，不改动时不随产品提交。
+
+| 探针 | 对应章节 | 验证内容 |
+| --- | --- | --- |
+| `moejs-eval` | §3 | moejs v0.1.1 嵌入 Go、调用 JS、异常与超时 |
+| `webview-features` | §5 | 系统 webview 的 MediaSource / ManagedMediaSource / 编解码支持 |
+| `mse-chain` | §6 | 本地 fMP4 HLS → hls.js → MSE，首帧与 seek 耗时 |
+
+三个探针的依赖版本钉死为 mygo `v0.9.2`（`25ce62f`）、moejs `v0.1.1`（`b7f49c1`），与 [versions.md](versions.md) 一致；升级须先改 versions.md 再改探针。
 
 ## 文档纪律
 
