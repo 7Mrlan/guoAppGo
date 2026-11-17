@@ -1,7 +1,8 @@
 # 构建产物
-bin/
-build/
-dist/
+# 只拦仓库根的构建输出；web/dist 是内嵌前端，不是产物，必须进库。
+/bin/
+/build/
+/dist/
 *.app
 *.app/
 *.exe
