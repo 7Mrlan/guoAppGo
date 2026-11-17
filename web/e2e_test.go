@@ -224,3 +224,86 @@ func TestM1Theme(t *testing.T) {
 		t.Fatalf("body background = %q, want a themed colour", got)
 	}
 }
+
+// TestM1Components checks the component page: twelve tagged controls, exactly
+// one disabled, every control carries a name, and the layer closes on Esc with
+// the focus returned to the control that opened it.
+func TestM1Components(t *testing.T) {
+	w := appWindow(t)
+
+	evalString(t, w, `location.hash = '#/dev/components', 'ok'`)
+	if !waitFor(t, w, `document.querySelectorAll('[data-ac]').length === 12`) {
+		t.Fatalf("tagged controls = %s, want 12",
+			evalString(t, w, `String(document.querySelectorAll('[data-ac]').length)`))
+	}
+
+	unnamed := `[...document.querySelectorAll('[data-ac]')].filter(e => !e.getAttribute('aria-label') && !e.textContent.trim()).length`
+	if got := evalString(t, w, `String(`+unnamed+`)`); got != "0" {
+		t.Fatalf("controls without an accessible name = %s, want 0", got)
+	}
+	if got := evalString(t, w, `String(document.querySelectorAll('[data-ac][disabled]').length)`); got != "1" {
+		t.Fatalf("disabled controls = %s, want 1", got)
+	}
+	if got := evalString(t, w, `String(document.querySelectorAll('[data-ac]:not([disabled])').length)`); got != "11" {
+		t.Fatalf("enabled controls = %s, want 11", got)
+	}
+
+	evalString(t, w, `(() => { const el = document.querySelector('[data-ac="layer-trigger"]'); el.focus(); el.click(); return 'ok'; })()`)
+	if !waitFor(t, w, `(() => { const l = document.querySelector('[data-role=layer]'); return !!l && l.contains(document.activeElement); })()`) {
+		t.Fatalf("the layer did not open with the focus inside it")
+	}
+
+	evalString(t, w, `document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true })), 'ok'`)
+	if !waitFor(t, w, `document.querySelector('[data-role=layer]') === null`) {
+		t.Fatalf("the layer is still open after Esc")
+	}
+	if got := evalString(t, w, `document.activeElement && document.activeElement.dataset.ac`); got != "layer-trigger" {
+		t.Fatalf("focus after closing the layer = %q, want layer-trigger", got)
+	}
+}
+
+// TestM1Routes checks the hash router: a nav click moves the hash and the
+// current-page marker, a reload keeps both, an unknown path renders the
+// not-found page, and an empty hash falls back to the home route.
+func TestM1Routes(t *testing.T) {
+	w := appWindow(t)
+
+	if got := evalString(t, w, `location.hash = '', 'ok'`); got != "ok" {
+		t.Fatalf("clearing the hash: %q", got)
+	}
+	if !waitFor(t, w, `document.querySelector('[data-route=home]') !== null`) {
+		t.Fatal("the navigation did not render")
+	}
+
+	evalString(t, w, `document.querySelector('[data-route=explore]').click(), 'ok'`)
+	if !waitFor(t, w, `location.hash === '#/explore'`) {
+		t.Fatalf("hash after clicking 发现 = %q, want #/explore", evalString(t, w, `location.hash`))
+	}
+	if got := evalString(t, w, `document.querySelector('[aria-current=page]').dataset.route`); got != "explore" {
+		t.Fatalf("current nav item = %q, want explore", got)
+	}
+
+	w.Page().Reload()
+	if !waitFor(t, w, `document.readyState === 'complete' && document.title === 'guoAppGo'`) {
+		t.Fatal("the page did not reload")
+	}
+	if got := evalString(t, w, `location.hash`); got != "#/explore" {
+		t.Fatalf("hash after a reload = %q, want #/explore", got)
+	}
+	if got := evalString(t, w, `document.querySelector('[aria-current=page]').dataset.route`); got != "explore" {
+		t.Fatalf("current nav item after a reload = %q, want explore", got)
+	}
+
+	evalString(t, w, `location.hash = '#/nope', 'ok'`)
+	if !waitFor(t, w, `!!document.querySelector('[data-role=not-found]')`) {
+		t.Fatal("an unknown hash did not render the not-found page")
+	}
+	if got := evalString(t, w, `String(document.body.children.length)`); got == "0" {
+		t.Fatal("the body is empty on an unknown hash")
+	}
+
+	evalString(t, w, `location.hash = '', 'ok'`)
+	if !waitFor(t, w, `(() => { const h = location.hash; return (h === '' || h === '#/') && !!document.querySelector('[data-route=home]'); })()`) {
+		t.Fatalf("an empty hash did not fall back to the home route, hash = %q", evalString(t, w, `location.hash`))
+	}
+}
