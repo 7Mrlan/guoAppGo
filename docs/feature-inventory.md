@@ -27,12 +27,45 @@ git ls-remote https://github.com/egoist/mygo.git   "refs/tags/v0.9.2*"   # 25ce6
 git ls-remote https://github.com/MoeForge/moejs.git "refs/tags/v0.1.1*"  # b7f49c1f…
 ```
 
-**tag 与 main 的差异（按要求单独标出）**：main 当时是 `2.0.2+114`（`5a7a116`，2026-11-17 13:18）。逐文件比对后，main 比 tag 只多两个文件、lib 总行数 37,902 vs 37,219（+683）：
+**tag 与 main 的差异（按要求单独标出，本条已按复核口径更正）**：main 是 `2.0.2+114`（`5a7a116530fcf4242bfc6da08209585e267629cb`，2026-11-17 13:18）。实测 `git diff 4c7aab6 5a7a116`：
 
-- `lib/danmaku_emoji.dart`（210 行，弹幕表情）
-- `lib/ui/detail/season_strip.dart`（297 行，季播横条）
+| 范围 | 文件数 | 增 / 删 |
+| --- | --- | --- |
+| 全量 | 83 | +2,058 / −1,032 |
+| `lib` + `test`（Dart 应用代码） | **20**（lib 17：15 改 + 2 增；test 3：2 改 + 1 增） | +1,291 / −430 |
+| `packages/` | 10 | +493 / −598 |
+| `assets/` | 50（49 个 png 为二进制不计行数，1 个文本 LICENSE） | +198 / −0 |
+| `native/` | **0** | 0 |
 
-`native/` 下 Go 代码两边完全一致（87 文件 / 13,116 行），说明**业务核心在 tag 时已定型**。这两个文件都属 P2/锦上添花，不影响本文任何优先级判定；但如果产品决定以 `2.0.2` 为功能基线，弹幕表情与季播条要各算一笔小工作量。
+```sh
+git -C guoapp fetch --depth 1 origin 5a7a116530fcf4242bfc6da08209585e267629cb
+git -C guoapp diff --shortstat 4c7aab6 5a7a116
+git -C guoapp diff --name-status 4c7aab6 5a7a116 -- lib test
+```
+
+**更正**：本文初稿写"main 比 tag 只多两个文件"，是错的——那次只比对了文件名列表，只能看出新增/删除，漏掉了被修改的 15 个 `lib/` 文件。被改的是：`core_bridge.dart`、`danmaku_controller.dart`、`danmaku_models.dart`、`playback_preferences.dart`、`playback_session.dart`、`ui/detail/detail_page.dart`、`ui/player/danmaku_overlay.dart`、`ui/player/danmaku_settings.dart`、`ui/player/landscape_player_page.dart`、`ui/player/playback_sheets.dart`、`ui/player/player_lock.dart`、`ui/player/player_surface.dart`、`ui/player/portrait_player_page.dart`、`ui/settings/settings_sections.dart`、`ui/widgets/cover_image.dart`。
+
+（行数口径注：按文件逐个数行得到 lib 合计是 tag 37,219 / main 37,902，与 git 的 `+1,153/−430` 方向一致但差约 40 行，原因是 PowerShell 对末行无换行的文件少计一行。引用 tag↔main 差异时以 git 的 numstat 为准。）
+
+**这条差异怎么用——结论比初稿收紧，不是放松**：
+
+1. `native/` 完全一致（0 差异）→ 业务核心在 tag 已定型，§2 的五条前提与 §4 全部优先级**不受影响**。
+2. 18 处 Dart 改动**集中在播放线**（逐文件 numstat 见下），且修复与新功能混在一起：播放器锁（#157，新增）、预开下一集改为临近片尾（#159，改）、拖动进度条 5 秒未跳转则重开当前线路（改）、弹幕表情（新增）、macOS 文件选择器 entitlement（改）。
+3. **方向提醒：按 main 估不会算多，会算少。** `ui/detail/detail_page.dart` 是 **+97/−315（净删 218 行）**，因为 main 把内容拆进了 `season_strip.dart`（新增 297 行）。只看总数会以为"详情页变小了"，实际是搬走。基线取 tag 才正确。
+4. 基线是 tag，意味着 v1 **不继承 2.0.2 的新功能**（弹幕表情、季播条），但**必须把 2.0.2 的修复当作"已知缺陷清单"逐条读**——否则会在取流/重连、播放器锁、进度条跳转上重新踩一遍同样的坑。初稿"不影响判定"的说法把这条风险说轻了。
+
+播放线逐文件 numstat（`git diff --numstat 4c7aab6 5a7a116`，只列净变动绝对值 >10 的）：
+
+| 文件 | 增 / 删 | 净 |
+| --- | --- | --- |
+| `lib/ui/player/portrait_player_page.dart` | +190 / −24 | +166 |
+| `lib/ui/detail/detail_page.dart` | +97 / −315 | **−218** |
+| `lib/playback_session.dart` | +54 / −14 | +40 |
+| `lib/ui/player/danmaku_overlay.dart` | +78 / −40 | +38 |
+| `lib/ui/player/player_lock.dart` | +23 / −17 | +6 |
+| `lib/ui/player/player_surface.dart` | +2 / −2 | 0 |
+
+**Windows 渲染的一条旁证**：main 把 `packages/media_kit_video/windows` 的渲染后端从 ANGLE 换成 D3D11（删 `angle_surface_manager.*`，增 `d3d11_surface_manager.*` + `render_d3d11.h`，10 文件 +493/−598）。我们不用 media_kit，不影响实现；但它说明上游在 Windows 渲染上有已知问题正在打补丁——**做 Windows 附加端时 D3D11 这条路是被踩过的，别自己再摸一遍 ANGLE。**
 
 ---
 
@@ -330,3 +363,4 @@ git ls-remote https://github.com/MoeForge/moejs.git "refs/tags/v0.1.1*"  # b7f49
 - **红果取流的签名算法（v5 签名，CHANGELOG #165）**：在 `provider_*` 与模块内，是"能不能播"的命门，本次只确认了存在与位置，未验证可移植性。**建议戈优先验这条**。
 - **`guoapp-sources` 私有仓库**：`CLAUDE.md` 提到官方站源正从 Go 改写成 JS，仓库不可访问，无法统计其规模。
 - **`worker/` 线上部署状态**：代码在仓库里（Cloudflare Worker，两个路由），线上是否仍在服务未验证。
+- **2.0.2 的修复明细（本文最大遗漏）**：基线是 tag `app-v2.0.1-113`，`2.0.2+114` 上 15 个 `lib/` 文件、`+1,291/−430` 的改动只核到了文件和行数，**没逐条核过每条改动在修什么缺陷**。须对照 `CHANGELOG.md` 的 `2.0.2+114` 一节逐条过，否则 v1 会把已修的坑重新踩一遍（已确认涉及：取流/重连、播放器锁、拖动进度条跳转、弹幕表情、macOS 文件选择器 entitlement）。
