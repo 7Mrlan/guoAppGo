@@ -24,6 +24,19 @@
 - 磁盘写入失败、文件内容损坏、字段缺失的旧版配置
 - IPC 消息缺字段、类型错误、未知消息类型、超大消息
 
+## E2E 测试环境约束（违反会导致假红或假绿）
+
+这些是实测踩出来的，不是推测；写测试前先看这一段。
+
+| 约束 | 现象 | 做法 |
+| --- | --- | --- |
+| `Eval` 不能在主线程回调里调用 | 在 `OnDidFinishLoad` 里调 `Eval`，卡死 25 秒后超时退出，只留一行 `did-finish-load` | 从 goroutine 里调用；`Eval` 自己需要主线程，回调就在主线程上 |
+| GUI 测试必须有桌面会话 | 受限会话里 WebView2 控制器返回 `0x8000FFFF`，测试永远红 | 用 `MYGO_E2E=1` 开关；未设或无桌面会话时 `t.Skip`，退出码 0，跳过不算失败 |
+| 同进程只能有一个 webview 控制器 | 起第二个控制器返回 `0x80004004` | 多个用例共用一个窗口，不要每个用例各起一个 |
+| E2E 必须以 `web/` 为工作目录 | 在仓库根跑编译好的测试二进制，报 `open src/tokens.css: The system cannot find the path specified` | 用 `go test ./web`，或把测试二进制放进 `web/` 执行；`tokenFor` 读的是相对路径 `src/tokens.css`，故意不改 `runtime.Caller` 定位，避免把 cwd 依赖藏起来 |
+
+交付时两组结果都要给：设了 `MYGO_E2E=1` 且有桌面会话的通过组，以及未设开关时 `SKIP` + 退出码 0 的那组。CI 上跑不了桌面会话，只验前者等于没验跳过逻辑。
+
 ## 覆盖率口径
 
 - 测量命令：`go test ./... -coverprofile=cover.out` 后 `go tool cover -func=cover.out`

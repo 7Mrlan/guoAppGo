@@ -1,6 +1,4 @@
-:root {
-  color-scheme: dark;
-}
+@import "./tokens.css";
 
 html,
 body {
@@ -11,9 +9,10 @@ body {
 body {
   display: grid;
   place-items: center;
-  background: #101014;
-  color: #e8e8ee;
-  font: 15px/1.6 system-ui, -apple-system, "Segoe UI", "PingFang SC", sans-serif;
+  background: var(--color-bg);
+  color: var(--color-text);
+  font: var(--font-size-md) / 1.6 system-ui, -apple-system, "Segoe UI", "PingFang SC", sans-serif;
+  transition: background var(--motion-fast) linear, color var(--motion-fast) linear;
 }
 
 main {
@@ -21,17 +20,18 @@ main {
 }
 
 h1 {
-  margin: 0 0 8px;
-  font-size: 22px;
+  margin: 0 0 var(--space-2);
+  font-size: var(--font-size-lg);
   font-weight: 600;
   letter-spacing: 0.02em;
 }
 
 p {
   margin: 0;
-  color: #8b8b97;
+  color: var(--color-text-muted);
+  font-size: var(--font-size-sm);
 }
 
 code {
-  color: #b9b9c6;
+  color: var(--color-accent);
 }

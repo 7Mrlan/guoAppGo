@@ -6,7 +6,7 @@ import (
 	"testing"
 )
 
-// TestDistEmbedded guards the AC-M1-1a output contract: the embedded tree has
+// TestDistEmbedded guards the embedded output contract: the embedded tree has
 // the page, the page carries the app marker and title, and at least one
 // non-empty script was built next to it.
 func TestDistEmbedded(t *testing.T) {
