@@ -49,5 +49,6 @@ Get-Content <PROBE_DIR>\mse-chain.json
 
 ## 机器相关的注意点
 
+- **macOS**：三个探针都能从 Windows 交叉编译出 darwin/arm64（`CGO_ENABLED=0 GOOS=darwin GOARCH=arm64 go build`，产物 11.6~13.1 MB）。但 WKWebView 的宿主偏好按应用标识生效，裸二进制与真正 .app 包的表现可能不同：在 Mac 上优先把探针放进 mygo 工程用 `go tool mygo dev` 跑（它会生成带标识的 Dev 应用包），裸二进制只当快速试探。
 - 在受限会话（非用户桌面会话）里启动时，WebView2 会报 `0x8000FFFF`。换到桌面会话，或用 `Invoke-CimMethod Win32_Process Create` 拉起。
 - go 的 `%TEMP%` / `%USERPROFILE%\go` 不可写的机器上，需要设置 `GOTMPDIR`、`GOCACHE`、`GOPATH`。
