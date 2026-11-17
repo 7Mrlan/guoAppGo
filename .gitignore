@@ -1,0 +1,30 @@
+# 构建产物
+bin/
+build/
+dist/
+*.app
+*.app/
+*.exe
+*.dmg
+*.msi
+*.pkg
+
+# Go
+*.test
+*.out
+coverage.out
+coverage.html
+
+# 依赖与缓存
+node_modules/
+
+# 系统
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# 编辑器
+.idea/
+.vscode/
+*.swp
+*.swo
