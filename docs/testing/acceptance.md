@@ -23,7 +23,7 @@
 
 来源：`evaluation-plan.md` §6.3 的 M1（乐观 4 / 现实 7 / 悲观 12 人天）。三条子任务按依赖顺序推进，前一条的出口条件不满足不进入下一条。
 
-**M1 出口（2026-11-17）：八条 AC 全部通过**（1a/1b/2a/2b/2c/3a/3b/3c），其中 2a/2b/2c/3a/3b/3c 由把关独立复跑，记录见「复核记录」。
+**M1 出口（2026-11-17）：八条 AC 全部通过**（1a/1b/2a/2b/2c/3a/3b/3c）。复跑范围与逐条结果见「复核记录」；其中 AC-M1-1a 的 `npm ci` 未独立复跑，只验了它之后的步骤。
 
 | 子任务 | 范围 | 人天 | 出口条件 |
 | --- | --- | ---: | --- |
@@ -52,7 +52,7 @@
   - `check-tokens.mjs` PASS（24 个令牌，亮色覆盖完整，exit 0）；`contrast.mjs` 24 行全达标，最低 5.18，exit 0；
   - 重建产物 sha256 `13cb285ab539…`，与实现方报告一致；
   - 同批复核：`go build`/`go vet`/`go test`、`npm run typecheck`、`check-docs.mjs` 全 exit 0，`git diff --exit-code web/dist` 返回 0（ADR-0006 校验成立）。
-- **2026-11-17，AC-M1-1a/1b，把关复核，结论通过**：干净树 `go build` 退出 0、`git check-ignore web/dist/index.html` 退出 1、可见文件集含 `web/dist`、两次构建 sha256 一致（`13cb285ab539…`）。
+- **2026-11-17，AC-M1-1a/1b，把关复核，结论通过**：干净树 `go build` 退出 0、`git check-ignore web/dist/index.html` 退出 1、可见文件集含 `web/dist`、两次构建 sha256 一致（`13cb285ab539…`）。**未独立复跑**：AC-M1-1a 的 `npm ci`（未清空 `node_modules` 重装）；该步之后的 `npm run build`、`go build`、`TestDistEmbedded` 均已验。
 - **2026-11-17，AC-M1-2c/3a/3b，把关复核，结论通过**（提交 `15c7830`，26 文件 992 行）：
   - 四组 E2E 全 PASS（3.44 / 0.37 / 0.03 / 0.16s），不设开关全 SKIP、包 `ok`、exit 0；
   - 构建两次 sha256 `e710268b6a83…`；首屏 JS gzip 29.08 KB；
