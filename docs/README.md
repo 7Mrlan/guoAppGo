@@ -6,7 +6,7 @@
 
 ```
 docs/
-  README.md              本文件：索引 + 文档规范 + 三份第一轮产出的填写要求
+  README.md              本文件：索引 + 文档纪律 + 第一轮产出的填写要求
   versions.md            版本基准：三个依赖的 tag + commit sha，唯一事实来源
   architecture.md        架构：模块划分、进程/线程模型、IPC、数据流
   platform.md            macOS arm64 与 Windows 11 x64 的差异清单
@@ -17,13 +17,14 @@ docs/
     regression.md        发版前回归清单（含结果记录）
 ```
 
-第一轮评估产出（不属于上面固定骨架，属于交付物）：
+第一轮评估产出（不属于上面固定骨架，属于交付物）。**入口固定为 [evaluation.md](evaluation.md)，按下列顺序读**：
 
-```
-docs/evaluation.md          探路：规模/栈现状/路线取舍/工作量/风险
-docs/feature-inventory.md   理清：功能块清单与优先级
-docs/spike-stack.md         戈：技术栈最小验证的命令与结果
-```
+1. [evaluation.md](evaluation.md) — 探路（一）：0 版本基准 → 1 结论 → 2 原始规模 → 3 MyGo → 4 moejs → 附录 A 复现命令
+2. [evaluation-plan.md](evaluation-plan.md) — 探路（二）：5 路线取舍 → 6 工作量估算 → 7 风险与验证 → 8 查不到/待验证 → 附录 B
+3. [feature-inventory.md](feature-inventory.md) — 理清：功能块清单与优先级
+4. `docs/spike-stack.md` — 戈：技术栈最小验证的命令与结果（待产出，文件尚未创建）
+
+评估两份是同一份评估按章节边界切开，不是两份独立报告：章节编号连续（0–4 接 5–8，不重起），两文互相链接，任一处链接失效即视为断链。`evaluation-plan.md` 的数据与结论一律引用 `evaluation.md`，不得各自另立一套数字。
 
 ## 文档纪律
 
@@ -34,25 +35,35 @@ docs/spike-stack.md         戈：技术栈最小验证的命令与结果
 5. 版本号、路径、依赖名必须可查，不得凭印象填写。
 6. 版本一律按 tag 锁定并附 commit sha，来源见 [versions.md](versions.md)。禁止 `@latest`、禁止按 main 分支下结论。
 
-## 三份第一轮产出的填写要求
+## 第一轮产出的填写要求
 
-### docs/evaluation.md（负责人：探路）
+### docs/evaluation.md（负责人：探路，评估一：0–4 节）
 
-必填章节。第 0 节为版本基准，其余与评估任务的六点一一对应：
+第 0 节为版本基准，其余与原评估任务的前三点对应：
 
 0. 版本基准：原应用 `app-v2.0.1-113`、mygo `v0.9.2`、moejs `v0.1.1`，各自写 tag + commit sha（取自 [versions.md](versions.md)），并声明后续结论以此为准
-1. 原始规模：代码行数、页面数、状态管理方案、依赖清单
-2. MyGo 现状：版本、原生 UI 与 webview 两条路线成熟度、平台能力矩阵、已知坑
-3. moejs 现状：版本、API 形态、性能口径、是否值得承载插件/脚本
-4. 三条路线取舍：全 Go 原生 UI / Go+webview / Go+moejs 混合
-5. 工作量估算：按模块拆，乐观/现实/悲观三档，单位人天
-6. 前 5 风险及每个风险的验证方式
+1. 结论：先给可执行结论（建议做/不做、推荐哪条路线、量级），细节放后面
+2. 原始规模：代码行数、页面数、状态管理方案、依赖清单
+3. MyGo 现状：版本、原生 UI 与 webview 两条路线成熟度、平台能力矩阵、已知坑
+4. moejs 现状：版本、API 稳定性证据（release 与 breaking 记录）、维护活跃度、停更后的代价与隔离手段
+附录 A：复现上述数字的完整命令
 
-硬性要求：
+### docs/evaluation-plan.md（负责人：探路，评估二：5–8 节）
+
+章节编号接续上一份，不重起：
+
+5. 路线取舍：全 Go 原生 UI / Go+webview / 混合三种形态，每条必须写否决条件
+6. 工作量估算：按模块拆，乐观/现实/悲观三档，单位人天，写明口径（人数、熟悉度、是否含测试与文档）
+7. 风险与验证：前 5 风险及每个风险的验证方式，一条命令或一个半天内能做完的 spike
+8. 查不到 / 待验证：显式列出没查到依据的项，并写已尝试的检索方式
+附录 B：给下一轮的输入
+
+硬性要求（两份评估共用）：
 
 - 规模数据从仓库实拉，附命令与输出（例如 `git ls-files | wc -l`、`cloc` 结果、`pubspec.yaml` 原文）。
 - 依赖与版本写具体 tag 或 commit sha，不写"最新"。
 - 估算表必须写清口径：几个人、是否熟悉 Go、是否包含测试与文档工时。
+- 现状类结论必须带证据（release 记录、issue 链接、源码行数与路径）；"查不到"要写已尝试的检索方式。
 - 禁止无来源数字、禁止"大概/可能"。
 
 ### docs/feature-inventory.md（负责人：理清）
