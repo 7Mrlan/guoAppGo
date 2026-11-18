@@ -54,4 +54,6 @@ export interface Host {
   search(query: string): HostPage;
   detail(sourceId: string): HostDetail | null;
   resolveMedia(task: unknown): never;
+  // 模块清单里的版本号，参与目录缓存的键。
+  moduleVersion(): string;
 }

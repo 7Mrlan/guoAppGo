@@ -1,5 +1,5 @@
 <script setup lang="ts">
-// 追剧页：单个条目的追剧状态与回到详情的入口。
+// 追剧详情：单个条目的追剧状态与回到详情的入口。
 import { computed } from "vue";
 
 import { host } from "../data/fixture";

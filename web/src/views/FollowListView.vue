@@ -1,5 +1,5 @@
 <script setup lang="ts">
-// 追剧页：按观看进度列出的条目，点进去看进度详情。
+// 追剧列表：按观看进度列出条目，点进去看单条的追剧详情。
 import { computed } from "vue";
 
 import EmptyState from "../components/EmptyState.vue";

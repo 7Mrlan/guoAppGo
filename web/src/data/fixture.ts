@@ -71,15 +71,26 @@ function guard(): void {
   }
 }
 
+// 宿主调用次数，供页面测试核对缓存是否真正命中。
+function bump(kind: "catalog" | "search"): void {
+  const host = window as unknown as { __hostCalls?: { catalog: number; search: number } };
+  host.__hostCalls ??= { catalog: 0, search: 0 };
+  host.__hostCalls[kind] += 1;
+}
+
+const MODULE = { id: "hongguo", version: "1.0.4" };
+
 export const host: Host = {
   categories: () => CATEGORIES,
   catalogPage: (page, category) => {
     guard();
+    bump("catalog");
     const filtered =
       category === "" ? ITEMS : ITEMS.filter((item) => CATEGORY_OF[item.id] === category);
     return { ...pageOf(filtered, page, 12), warning: filtered.length === 0 ? "该分类暂无内容" : undefined };
   },
   search: (query) => {
+    bump("search");
     const keyword = query.trim();
     if (keyword === "") {
       return { items: [], hasMore: false };
@@ -87,6 +98,7 @@ export const host: Host = {
     const hits = ITEMS.filter((item) => item.title.includes(keyword));
     return { ...pageOf(hits, 1, 12), warning: hits.length === 0 ? "没有匹配的结果" : undefined };
   },
+  moduleVersion: () => MODULE.version,
   detail: (sourceId) => DETAILS.get(sourceId) ?? null,
   // 取流属于播放器，M2 不消费；留接口是为了与 api:1 的形状一致。
   resolveMedia: () => {

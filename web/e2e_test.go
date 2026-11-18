@@ -225,6 +225,131 @@ func TestM1Theme(t *testing.T) {
 	}
 }
 
+// TestM2Catalog checks the catalogue cache: a category is fetched once, a
+// repeat visit is served from the cache, and a module version change refetches.
+func TestM2Catalog(t *testing.T) {
+	w := appWindow(t)
+
+	evalString(t, w, `(() => {
+		window.__fixtureModuleVersion = '1.0.4';
+		window.__hostCalls = { catalog: 0, search: 0 };
+		location.hash = '#/explore';
+		return 'ok';
+	})()`)
+	if !waitFor(t, w, `document.querySelector('[data-role=catalog-item]') !== null`) {
+		t.Fatal("the catalogue did not render")
+	}
+	if got := evalString(t, w, `String(window.__hostCalls.catalog)`); got != "1" {
+		t.Fatalf("catalogue fetches after the first visit = %s, want 1", got)
+	}
+
+	evalString(t, w, `document.querySelector('[data-category=series]').click(), 'ok'`)
+	if !waitFor(t, w, `String(window.__hostCalls.catalog) === '2'`) {
+		t.Fatalf("catalogue fetches after switching category = %s, want 2",
+			evalString(t, w, `String(window.__hostCalls.catalog)`))
+	}
+
+	evalString(t, w, `document.querySelector('[data-category=series]').click(), 'ok'`)
+	time.Sleep(200 * time.Millisecond)
+	if got := evalString(t, w, `String(window.__hostCalls.catalog)`); got != "2" {
+		t.Fatalf("a repeated category visit refetched: fetches = %s, want the cached 2", got)
+	}
+
+	evalString(t, w, `(() => { window.__fixtureModuleVersion = '1.0.5'; document.querySelector('[data-category=series]').click(); return 'ok'; })()`)
+	if !waitFor(t, w, `String(window.__hostCalls.catalog) === '3'`) {
+		t.Fatalf("a module version change did not refetch: fetches = %s, want 3",
+			evalString(t, w, `String(window.__hostCalls.catalog)`))
+	}
+}
+
+// TestM2Search checks the debounce: two quick inputs fire one search, an empty
+// result renders the empty state, and clearing the input returns to idle.
+func TestM2Search(t *testing.T) {
+	w := appWindow(t)
+
+	evalString(t, w, `(() => { window.__hostCalls = { catalog: 0, search: 0 }; location.hash = '#/search'; return 'ok'; })()`)
+	if !waitFor(t, w, `document.querySelector('[data-role=search-input]') !== null`) {
+		t.Fatal("the search page did not render")
+	}
+
+	evalString(t, w, `(() => {
+		const input = document.querySelector('[data-role=search-input]');
+		input.value = '深';
+		input.dispatchEvent(new Event('input'));
+		window.setTimeout(() => { input.value = '深海'; input.dispatchEvent(new Event('input')); }, 50);
+		return 'ok';
+	})()`)
+	// 等过防抖窗口再读计数：只等结果节点出现的话，第一次计时器触发时就会读到，
+	// 无法证明第二次输入被取消。
+	time.Sleep(800 * time.Millisecond)
+	if got := evalString(t, w, `String(window.__hostCalls.search)`); got != "1" {
+		t.Fatalf("searches after two quick inputs = %s, want 1", got)
+	}
+	if !waitFor(t, w, `document.querySelector('[data-role=search-results]') !== null`) {
+		t.Fatal("the search results did not render")
+	}
+
+	evalString(t, w, `(() => {
+		const input = document.querySelector('[data-role=search-input]');
+		input.value = '不存在的片名';
+		input.dispatchEvent(new Event('input'));
+		return 'ok';
+	})()`)
+	if !waitFor(t, w, `document.querySelector('[data-role=search-empty]') !== null`) {
+		t.Fatal("an empty result did not render the empty state")
+	}
+
+	evalString(t, w, `(() => {
+		const input = document.querySelector('[data-role=search-input]');
+		input.value = '';
+		input.dispatchEvent(new Event('input'));
+		return 'ok';
+	})()`)
+	if !waitFor(t, w, `document.querySelector('[data-role=search-idle]') !== null`) {
+		t.Fatal("clearing the input did not return to the idle state")
+	}
+}
+
+// TestM2Detail checks the detail page: the description unclamps on demand, the
+// last-watched episode is marked, and that mark survives a season switch.
+func TestM2Detail(t *testing.T) {
+	w := appWindow(t)
+
+	evalString(t, w, `location.hash = '#/detail/film-001', 'ok'`)
+	if !waitFor(t, w, `document.querySelector('[data-role=detail-title]') !== null`) {
+		t.Fatal("the detail page did not render")
+	}
+	if got := evalString(t, w, `String(document.querySelector('[data-role=detail-description]').classList.contains('detail__clamp'))`); got != "true" {
+		t.Fatalf("the description is not clamped by default: %s", got)
+	}
+
+	evalString(t, w, `document.querySelector('[data-role=detail-expand]').click(), 'ok'`)
+	if !waitFor(t, w, `!document.querySelector('[data-role=detail-description]').classList.contains('detail__clamp')`) {
+		t.Fatal("the description did not unclamp after expanding")
+	}
+
+	if got := evalString(t, w, `String(document.querySelectorAll('[data-current-episode=true]').length)`); got != "1" {
+		t.Fatalf("marked last-watched episodes = %s, want 1", got)
+	}
+
+	evalString(t, w, `document.querySelector('[data-season="1"]').click(), 'ok'`)
+	time.Sleep(150 * time.Millisecond)
+	evalString(t, w, `document.querySelector('[data-season="0"]').click(), 'ok'`)
+	if !waitFor(t, w, `document.querySelectorAll('[data-current-episode=true]').length === 1`) {
+		t.Fatalf("the last-watched mark was lost after switching seasons")
+	}
+
+	// 当前窗口宽 800（<840）：选集走追剧过渡页，而不是就地播放。
+	if got := evalString(t, w, `String(matchMedia('(max-width: 839px)').matches)`); got != "true" {
+		t.Fatalf("narrow media query = %s, want true at this window width", got)
+	}
+	evalString(t, w, `document.querySelector('[data-episode]').click(), 'ok'`)
+	if !waitFor(t, w, `location.hash === '#/follow/film-001'`) {
+		t.Fatalf("hash after picking an episode in the narrow layout = %q, want #/follow/film-001",
+			evalString(t, w, `location.hash`))
+	}
+}
+
 // TestM2Shell checks the shell: four navigation entries plus a search entry,
 // the current-page marker, and the collapsed layout below 840px.
 func TestM2Shell(t *testing.T) {
