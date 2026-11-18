@@ -120,7 +120,7 @@ function checkVersionBaseline() {
   const problems = [];
   const versionsFile = path.join(DOCS, "versions.md");
   const shaSet = new Set();
-  const requiredTags = ["app-v2.0.1-113", "v0.9.2", "v0.1.1"];
+  const pinnedTags = ["v0.9.2", "v0.1.1"];
 
   if (!fs.existsSync(versionsFile)) {
     problems.push("docs/versions.md 不存在");
@@ -128,8 +128,20 @@ function checkVersionBaseline() {
     const text = fs.readFileSync(versionsFile, "utf8");
     for (const m of text.matchAll(/\b[0-9a-f]{40}\b/g)) shaSet.add(m[0]);
     if (shaSet.size < 3) problems.push(`docs/versions.md: 只找到 ${shaSet.size} 个 40 位 sha，少于 3 条基准`);
-    for (const tag of requiredTags) {
-      if (!text.includes(tag)) problems.push(`docs/versions.md: 缺少版本 tag ${tag}`);
+    // mygo 与 moejs 钉死在 tag；原应用跟 main 提交，不跟 tag
+    for (const tag of pinnedTags) {
+      if (!text.includes(tag)) problems.push(`docs/versions.md: 缺少钉死版本 tag ${tag}`);
+    }
+    // 原应用那一行必须是 main 提交号，写 tag 即视为口径过期
+    const guoRow = text.split("\n").find((l) => l.includes("Xanerix/guoapp") && l.trim().startsWith("|"));
+    if (!guoRow) {
+      problems.push("docs/versions.md: 未找到 Xanerix/guoapp 的基准行");
+    } else {
+      if (!/\b[0-9a-f]{40}\b/.test(guoRow)) problems.push("docs/versions.md: guoapp 基准行缺少 40 位提交号");
+      if (!/main|提交/.test(guoRow)) problems.push("docs/versions.md: guoapp 基准行需标明以 main 提交为准");
+    }
+    if (!text.includes("app-v2.0.1-113")) {
+      problems.push("docs/versions.md: 缺少 app-v2.0.1-113 阅读锚点（evaluation.md 的实测数据来源）");
     }
   }
 

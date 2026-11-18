@@ -13,11 +13,14 @@
 
 | 项目 | 版本 |
 | --- | --- |
-| Xanerix/guoapp（原应用） | `app-v2.0.1-113` |
-| egoist/mygo | `v0.9.2` |
-| MoeForge/moejs | `v0.1.1` |
+| Xanerix/guoapp（原应用） | main 提交 `012de5f6`（`012de5f6ed67969ca57df03ccca1225018427277`，2026-11-17T16:54:50Z） |
+| 阅读锚点 tag | `app-v2.0.1-113`（`4c7aab6`）：评估数据在此 tag 上实测，只作阅读锚点 |
+| egoist/mygo | `v0.9.2`（钉死，不跟 main） |
+| MoeForge/moejs | `v0.1.1`（钉死，不跟 main） |
 
-tag 对应的完整 commit sha 与锁版规则见 [docs/versions.md](docs/versions.md)。该文件是全项目唯一的版本事实来源。
+原应用以 **main 最新提交**为基准，不以 tag 收工：每次开工前先取新增提交，把上次基准之后的功能并进待办。MyGo 与 moejs 的版本钉死不动。
+
+完整 commit sha、来源与锁版规则见 [docs/versions.md](docs/versions.md)。该文件是全项目唯一的版本事实来源。
 
 ## 构建与运行
 

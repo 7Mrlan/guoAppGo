@@ -2,6 +2,12 @@
 
 面向使用者的行为变化记录。格式参照 [Keep a Changelog](https://keepachangelog.com/zh-CN/1.1.0/)；版本号取二进制内 `internal/app.Version` 的值，两者必须一致。
 
+## 当前状态
+
+- 版本号：`0.0.1`，尚未发版、未分发；以下条目均属 `[未发布]`
+- 已进 develop 的里程碑：M0 骨架（单窗口 + 内嵌前端）、M1 组件与路由（八条验收标准全部通过，复核记录见 [docs/testing/acceptance.md](docs/testing/acceptance.md)）
+- 版本基准口径：原应用跟 main 最新提交，不跟 tag；MyGo 与 moejs 钉死不动
+
 ## [未发布]
 
 ### 新增

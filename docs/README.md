@@ -7,7 +7,7 @@
 ```
 docs/
   README.md                                本文件：索引 + 文档纪律 + 产出填写要求
-  versions.md                              版本基准：三个依赖的 tag + commit sha，唯一事实来源
+  versions.md                              版本基准：原应用 main 提交 + mygo/moejs 钉死 tag，唯一事实来源
   architecture.md                          架构：模块划分、进程/线程模型、IPC、数据流
   platform.md                              macOS arm64 与 Windows 11 x64 的差异清单
   evaluation.md                            评估一：0 版本基准 → 1 结论 → 2 规模 → 3 MyGo → 4 moejs → 附录 A
@@ -63,7 +63,7 @@ node scripts/check-docs.mjs
 | --- | --- |
 | 链接与文件形态 | 所有 md 的相对链接目标必须存在；文件必须 UTF-8、无 BOM、纯 LF、末尾有换行 |
 | 章节编号连续性 | [evaluation.md](evaluation.md) 为 0–4 + 附录 A，[evaluation-plan.md](evaluation-plan.md) 为 5–8 + 附录 B，编号不得跳号或重起 |
-| 版本基准确性与一致 | [versions.md](versions.md) 必须含三个 tag 与 40 位 sha；引用 sha 的文档必须有"## 0. 版本基准"节、必须链接 versions.md、且 sha 不得出自基准之外 |
+| 版本基准确性与一致 | [versions.md](versions.md) 的 guoapp 行必须写 main 提交号并标明以 main 为准、必须保留 `app-v2.0.1-113` 阅读锚点；mygo/moejs 必须仍为钉死 tag；引用 40 位 sha 的文档必须有"## 0. 版本基准"节、必须链接 versions.md、且 sha 不得出自基准之外；`go.mod` 与 `package-lock.json` 的 mygo 版本必须一致且都已登记 |
 | README 登记 | 目录树与链接里登记的文件必须存在；`docs/` 下每个 md 必须在本文登记 |
 
 改文档、增删文件、调整章节编号后必须跑一遍；检查失败不得提交。

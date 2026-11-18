@@ -10,19 +10,17 @@
 
 | 项目 | 仓库 | tag | commit sha | commit 日期 (UTC) |
 | --- | --- | --- | --- | --- |
-| 原应用 小果影视 | Xanerix/guoapp | `app-v2.0.1-113` | `4c7aab6a87a12e1aaf6b1d08fa31d3844148650c` | 2026-11-16T16:21:19Z |
+| 原应用 小果影视 | Xanerix/guoapp | `main`（`2.0.2+114`；tag `app-v2.0.1-113` 为阅读锚点） | `012de5f6ed67969ca57df03ccca1225018427277` | 2026-11-17T16:54:50Z |
 | 桌面框架 | egoist/mygo | `v0.9.2` | `25ce62f4d357cd6d29da04300e3fbc352d79daa4` | 2026-11-16T12:54:29Z |
 | JS 运行时 | MoeForge/moejs | `v0.1.1` | `b7f49c1f7e502a593d65d4cd9ae3a0b2c3bda070` | 2026-11-15T17:05:00Z |
 
-与 [versions.md](versions.md) 一致（该文件为唯一事实来源，本表仅复述）。本文所有行数、文件数、issue 数、release 数均在这三个 tag 的代码上实测，命令见附录 A。
+与 [versions.md](versions.md) 一致（该文件为唯一事实来源，本表仅复述）。本文所有行数、文件数均按 main 提交 `012de5f6` 实测；issue 数、release 数采集于 2026-11-17，命令见附录 A。
 
-**tag 与 main 的差异**（`git diff --shortstat app-v2.0.1-113..5a7a116`）：
+**基准切换（2026-11-17）**：原应用基准从 tag `app-v2.0.1-113`（`4c7aab6a87a12e1aaf6b1d08fa31d3844148650c`）切到 main 提交 `012de5f6ed67969ca57df03ccca1225018427277`（`2.0.2+114`）。
 
-- 全仓 83 个文件、+2,058 / −1,032；其中 Dart 20 个文件、+1,291 / −430。main 版本号为 `2.0.2+114`。
-- 改动集中在弹幕表情（新增 `lib/danmaku_emoji.dart`）、`lib/playback_session.dart`、竖屏播放器（`portrait_player_page.dart` +214）与详情页季条（`season_strip.dart`，新增）。
-- `lib/ui/detail/detail_page.dart` 是 **+97/−315，净删 218 行**——main 把详情页拆了一块出去（内容挪进 `season_strip.dart`）。所以按 main 估会把规模**算少**，而不是算多；这也是本文坚持按 tag 估的原因。
-- `native/` 完全一致（diff 0 文件），所以**以 tag 估 Go 侧工作量不会漏**；但 2.0.2 的弹幕表情（约 210 行）不在基线内，重写范围按 tag 算，别按 main 算。
-- `packages/` 10 文件 +493/−598：`media_kit_video/windows` 把渲染后端从 ANGLE 换成 D3D11（删 `angle_surface_manager.*`，新增 `d3d11_surface_manager.*`、`render_d3d11.h`）。我们不用 media_kit，实现不受影响；但这说明上游在 Windows 渲染上踩过坑，Windows 附加端别自己再走 ANGLE。
+- tag 到该提交相距 **34 个提交、107 个文件（+4,444/−1,349）**：`git rev-list --count 4c7aab6..012de5f6` 与 GitHub compare（`ahead_by: 34`）两条路径一致；早先"tag 与 main 差 20 个 Dart 文件"那组数据只到 `5a7a116`，是切换前的对比，不再作为估工依据。
+- 本文规模按 `012de5f6` 重测（见 §2）；早期按 tag 采集的计数只在 §2.2 保留并注明时点。
+- `packages/media_kit_video/windows` 已把渲染后端从 ANGLE 换成 D3D11；我们不用 media_kit，但 Windows 附加端不要走 ANGLE。
 
 ---
 
@@ -38,22 +36,22 @@
 
 ---
 
-## 2. 原始规模（`app-v2.0.1-113` 实测）
+## 2. 原始规模（main `012de5f6` 实测）
 
 ### 2.1 代码量
 
 | 范围 | 文件数 | 行数 | 备注 |
 | --- | ---: | ---: | --- |
-| Dart 合计（含 `packages/`、`test/`） | 192 | 47,460 | 全仓 `*.dart`，排除 `build/`、`.dart_tool/` |
-| `lib/` | 132 | 37,219 | 应用本体 |
-| `lib/ui/` | 89 | 27,822 | 占 `lib/` 的 74.7% |
-| `lib/ui/player/` | 19 | 8,891 | 播放器、弹幕层、选集、迷你播放器、锁 |
-| `lib/ui/{settings,downloads,modules}/` | 18 | 6,408 | 设置/下载/站源模块页 |
-| 弹幕相关（4 个文件） | 4 | 1,326 | controller/models/style/overlay |
-| 非 UI Dart（`lib/` 根下） | 43 | 9,397 | 存储、编排、平台适配 |
-| Go `native/` 合计 | 87 | 13,116 | 含测试 |
-| Go `native/` 非测试 | 77 | 11,784 | 可直接复用的业务核心 |
-| Dart 测试 | 28 | — | 仓库自带 `test/` |
+| Dart 合计（含 `packages/`、`test/`） | 198 | 49,161 | 全仓 `*.dart`，排除 `build/`、`.dart_tool/` |
+| `lib/` | 137 | 38,795 | 应用本体 |
+| `lib/ui/` | 81 | 28,778 | 占 `lib/` 的 74.2% |
+| `lib/ui/player/` | 19 | 9,185 | 播放器、弹幕层、选集、迷你播放器、锁 |
+| `lib/ui/{settings,downloads,modules}/` | 17 | 6,978 | 设置/下载/站源模块页 |
+| 弹幕相关 | 6 | 1,654 | controller/models/style/overlay/emoji |
+| 非 UI Dart（`lib/` 根下） | 56 | 10,017 | 存储、编排、平台适配 |
+| Go `native/` 合计 | 87 | 13,130 | 含测试 |
+| Go `native/` 非测试 | 77 | 11,798 | 可直接复用的业务核心 |
+| Dart 测试 | 29 | — | 仓库自带 `test/` |
 
 **页面数：19 个** `lib/**/*_page.dart`（详情、探索、搜索、追剧、历史、我的、下载、下载选择、已下载剧、设置、站源模块、投屏、竖屏/横屏/电视播放、播放、解锁、条款）。
 页面之外还有大量非页面组件：`lib/ui/widgets/` 19 个文件（卡片、网格、搜索框、进度条、字母键盘等）。
@@ -61,8 +59,8 @@
 ### 2.2 状态管理
 
 - `pubspec.yaml` 里**没有任何状态管理库**：无 provider、riverpod、bloc、getx。
-- 代码文本匹配计数：`setState` 275 处、`ChangeNotifier` 15 处、`ValueNotifier` 13 处、`InheritedWidget` 11 处。
-- 结论：状态层是 Flutter 原生的 `setState` + 手写 `AppScope`（`lib/ui/app_scope.dart`）。迁移时**不需要翻译状态管理框架**，需要做的是把 9,397 行非 UI Dart 的职责并回 Go core。
+- 代码文本匹配计数（`012de5f6` 上实测）：`setState` 278 处、`ChangeNotifier` 15 处、`ValueNotifier` 14 处、`InheritedWidget` 11 处。
+- 结论：状态层是 Flutter 原生的 `setState` + 手写 `AppScope`（`lib/ui/app_scope.dart`）。迁移时**不需要翻译状态管理框架**，需要做的是把 10,017 行非 UI Dart 的职责并回 Go core。
 
 ### 2.3 依赖清单（21 个直接依赖 + 3 个本地覆盖）
 
@@ -235,12 +233,16 @@ README 实测（2026-10-01 采集，new-api 插件负载）：
 # 工作区（本机 D 盘不在沙箱内时的临时目录）
 $ws = "C:\Users\1009638\DeepSeek Bot\_eval"; cd $ws
 
-# 1) 按 tag 拉取三个仓库
-git clone --quiet https://github.com/Xanerix/guoapp.git
+# 1) 拉上游：guoapp 按 main 提交（本文基准），mygo/moejs 按 tag
+git clone --quiet --filter=blob:none https://github.com/Xanerix/guoapp.git
 cd guoapp
+git checkout 012de5f6ed67969ca57df03ccca1225018427277
+git rev-parse HEAD                    # 012de5f6ed67969ca57df03ccca1225018427277
+git worktree add ..\guoapp-main 012de5f6ed67969ca57df03ccca1225018427277   # 规模数字的采集树
+
+# 阅读锚点：早期评估数据在 tag 上采集，保留复现用，不作当前基准
 git fetch --quiet --depth 1 origin refs/tags/app-v2.0.1-113:refs/tags/app-v2.0.1-113
 git rev-parse app-v2.0.1-113          # 4c7aab6a87a12e1aaf6b1d08fa31d3844148650c
-git rev-parse HEAD                    # 5a7a116...（main，仅用于对比）
 git worktree add ..\guoapp-201 app-v2.0.1-113
 
 git clone --quiet --branch v0.9.2  --depth 1 https://github.com/egoist/mygo.git  mygo
@@ -248,15 +250,15 @@ git clone --quiet --branch v0.1.1  --depth 1 https://github.com/MoeForge/moejs.g
 git -C mygo   rev-parse HEAD          # 25ce62f4d357cd6d29da04300e3fbc352d79daa4
 git -C moejs  rev-parse HEAD          # b7f49c1f7e502a593d65d4cd9ae3a0b2c3bda070
 
-# 2) 规模统计（在 guoapp-201 下）
+# 2) 规模统计（在 guoapp-main 下）
 $all = Get-ChildItem -Recurse -Filter *.dart -File | Where-Object { $_.FullName -notmatch '\\build\\|\\\.dart_tool\\' }
-$all.Count; ($all | Get-Content | Measure-Object -Line).Lines      # 192 / 47460
+$all.Count; ($all | Get-Content | Measure-Object -Line).Lines      # 198 / 49161
 $lib = Get-ChildItem lib -Recurse -Filter *.dart -File
-$lib.Count; ($lib | Get-Content | Measure-Object -Line).Lines      # 132 / 37219
+$lib.Count; ($lib | Get-Content | Measure-Object -Line).Lines      # 137 / 38795
 (Get-ChildItem lib -Recurse -Filter *_page.dart).Count             # 19
 $g = Get-ChildItem native -Recurse -Filter *.go -File
 ($g | Where-Object { $_.Name -notmatch '_test\.go$' }).Count        # 77
-($g | Where-Object { $_.Name -notmatch '_test\.go$' } | Get-Content | Measure-Object -Line).Lines  # 11784
+($g | Where-Object { $_.Name -notmatch '_test\.go$' } | Get-Content | Measure-Object -Line).Lines  # 11798
 
 # 3) 状态管理 / 依赖（文本匹配计数，非 AST）
 foreach ($p in 'ChangeNotifier','ValueNotifier','setState','InheritedWidget') {
