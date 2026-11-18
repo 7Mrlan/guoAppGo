@@ -1,6 +1,6 @@
 # ADR-0002：UI 路线选 Go + webview（带条件）
 
-- 状态：已接受（条件：R1 的 B 段真实源结果不劣于原 Flutter 应用对照组；不达标则退"嵌 mpv"，按 126~136 重比 A/B，重开本 ADR）
+- 状态：已接受（条件：R1 的 B 段真实源结果不劣于原 Flutter 应用对照组；不达标则退"嵌 mpv"，按单源 136~150 重比——A 单源 133 更省即选 A，重开本 ADR）
 - 日期：2026-11-17
 - 决策人：Chief（本群当轮拍板）
 - 关联：ADR-0003（播放内核）、ADR-0005（IPC）、ADR-0006（前端选型）、[../evaluation.md](../evaluation.md) §5、[../evaluation-plan.md](../evaluation-plan.md) R0
@@ -18,12 +18,12 @@
 | 方案 | 做法 | 优点 | 代价 | 风险 |
 | --- | --- | --- | --- | --- |
 | A 全 Go 原生 UI | 用 `ui` 包重写 19 页与播放器 | 单二进制、内存低、GPU 直绘、无 webview 进程 | 142 人天（多源）/ 133（单源）；播放器交互与弹幕全部自绘 | 0.9.x 控件库仍在快速演化（83 release/7 周）；无原生视频 PiP；团队需学新 UI 库 |
-| B Go + webview | Go 做核心/窗口/IPC，前端写页面，播放用 `<video>` + hls.js + 代理 | 105~106 人天（单源）；PiP/全屏/弹幕为 web 成熟解法；团队栈匹配；UI 与核心解耦可换壳 | webview 进程内存较高；Windows 无原生 HLS，依赖 hls.js；多一层 IPC | webview 内能否稳定播真实源（R1）；macOS 真机未验证 |
+| B Go + webview | Go 做核心/窗口/IPC，前端写页面，播放用 `<video>` + hls.js + 代理 | 115~117 人天（v1 单源含 M6-lite；M6 整层不做时 109）；PiP/全屏/弹幕为 web 成熟解法；团队栈匹配；UI 与核心解耦可换壳 | webview 进程内存较高；Windows 无原生 HLS，依赖 hls.js；多一层 IPC | webview 内能否稳定播真实源（R1）；macOS 真机未验证 |
 | C 原生壳 + webview 播放页 | 列表/设置用原生 `ui`，播放页嵌网页 | 播放页拿到 PiP，页面性能较好 | 115~125 人天；两套渲染、两套调试，边界易腐化 | 单人团队维护两套技术栈容易烂尾 |
 
 ## 决定
 
-选 **B（Go + webview）**，单源口径 **106 人天**立项，Windows 先行、macOS 挂账。
+选 **B（Go + webview）**，v1 单源口径 **115~117 人天（对外 117，含 M6-lite 模块宿主）**立项，Windows 先行、macOS 挂账。
 
 三条可复核的理由：
 
@@ -31,7 +31,7 @@
 2. 播放器周边（PiP、全屏、字幕、弹幕、手势）在浏览器里是成熟解法；原生 `ui` 的视频 PiP 只覆盖页面 `<video>`，选 A 等于主动放弃这块。
 3. 取流已在 Go 侧解决（`app_stream.go` 本地代理 + 自定义头 + `app_stream_cenc.go` CENC 解密），webview 只需吃代理吐出的明文流，不需要重造播放链路。
 
-**本决定带条件**：R1 的 B 段（真实源 × 30 分钟 × 原 Flutter 应用对照组，在用户个人设备执行）结果若不劣于对照组，B 确认；不达标则退回"嵌 mpv/native module"路径，成本 **126~136**，届时按 [../evaluation-plan.md](../evaluation-plan.md) R0 重新比 A/B。
+**本决定带条件**：R1 的 B 段（真实源 × 30 分钟 × 原 Flutter 应用对照组，在用户个人设备执行）结果若不劣于对照组，B 确认；不达标则退回"嵌 mpv/native module"路径，单源成本升到 **136~150**，高于 A 单源 133，届时按 [../evaluation-plan.md](../evaluation-plan.md) R0 **改选 A**。
 
 ## 后果
 

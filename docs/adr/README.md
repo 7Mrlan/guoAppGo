@@ -13,7 +13,7 @@
 | 编号 | 标题 | 待回答的问题 | 依赖的输入 | 状态 |
 | --- | --- | --- | --- | --- |
 | ADR-0001 | 桌面框架与运行时选型：MyGo + moejs 是否采用 | 两者版本、许可、维护活跃度是否满足长期维护；能否只用一个 | evaluation.md §2、§3；spike-stack.md | 提议 |
-| ADR-0002 | UI 路线：全 Go 原生 UI / Go + webview / Go + moejs 混合 | 三条路线各自的能力缺口与工时差 | evaluation.md §5、evaluation-plan.md R0；A 段实测 | 已接受（条件：R1 的 B 段真实源不劣于对照组；不达标则退嵌 mpv，按 126~136 重比 A/B）：正文 [`0002-ui-route-webview.md`](0002-ui-route-webview.md) |
+| ADR-0002 | UI 路线：全 Go 原生 UI / Go + webview / Go + moejs 混合 | 三条路线各自的能力缺口与工时差 | evaluation.md §5、evaluation-plan.md R0；A 段实测 | 已接受（条件：R1 的 B 段真实源不劣于对照组；不达标则退嵌 mpv，按单源 136~150 重比，A 单源 133 更省即选 A）：正文 [`0002-ui-route-webview.md`](0002-ui-route-webview.md) |
 | ADR-0003 | 视频播放内核 | 用系统媒体框架、自带解码还是 webview `<video>` + hls.js | spike-stack.md §5、§6 | 已接受（R1 不达标则重开本 ADR 改选嵌 mpv）：正文 [`0003-playback-kernel-hlsjs-proxy.md`](0003-playback-kernel-hlsjs-proxy.md) |
 | ADR-0004 | 流媒体协议与格式支持范围 | HLS/m3u8、DASH、直链 mp4、字幕轨，各自支持到什么程度 | feature-inventory.md 中播放相关条目 | 提议 |
 | ADR-0005 | 主进程与前端/JS 的 IPC 协议 | 消息格式、版本字段、请求响应、事件、超时与错误码 | ADR-0002 已选 webview，本条为 v1 必做 | 提议 |

@@ -5,7 +5,7 @@
 技术栈：MyGo（桌面框架）+ moejs（JS 运行时）。
 目标平台：macOS arm64 为主，Windows 11 x64 附加。
 
-路线：**B——Go 核心 + webview 前端**（列表与播放页都在 webview 内，播放走 hls.js + 本地代理，暂不嵌 mpv）。按 106 人天立项。这是**带条件的决定**：真源实测（`tools/spike/MAC-RUN.md` 同口径的 B 段）不劣于原 Flutter 对照组才确认，不达标退到嵌 mpv 的 126~136 人天。
+路线：**B——Go 核心 + webview 前端**（列表与播放页都在 webview 内，播放走 hls.js + 本地代理，暂不嵌 mpv）。按 **117 人天**立项（v1 单源含 M6-lite 模块宿主 115~117，对外报保守值；单源不含模块宿主为 99 小计 / 109 合计，明细见 [docs/evaluation-plan.md](docs/evaluation-plan.md) §6.3）。这是**带条件的决定**：真源实测（`tools/spike/MAC-RUN.md` 同口径的 B 段）不劣于原 Flutter 对照组才确认，不达标退到嵌 mpv 的 126~136 人天。
 
 平台现状：团队没有 Mac 真机，v1 验收以 Windows 为准；macOS 的 WKWebView 行为、`.app`、签名、公证一律**未验证**，条件编译保留但不进 v1 验收。
 
