@@ -12,7 +12,8 @@ const root = dirname(dirname(fileURLToPath(import.meta.url)));
 const tokensPath = join(root, "web", "src", "tokens.css");
 const baselinePath = join(root, "scripts", "contrast-baseline.json");
 
-// 12 pairs: body text must reach 4.5, large text and UI accents 3.0.
+// 14 pairs: body text must reach 4.5, large text, UI accents and control
+// borders 3.0.
 const PAIRS = [
   ["--color-text", "--color-bg", 4.5],
   ["--color-text", "--color-surface", 4.5],
@@ -26,6 +27,8 @@ const PAIRS = [
   ["--color-accent", "--color-surface-raised", 3.0],
   ["--color-danger", "--color-surface", 3.0],
   ["--color-success", "--color-surface", 3.0],
+  ["--color-border-strong", "--color-bg", 3.0],
+  ["--color-border-strong", "--color-surface", 3.0],
 ];
 
 /** Parses #rgb, #rrggbb and #rrggbbaa into linear sRGB channels. */

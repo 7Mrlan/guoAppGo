@@ -8,8 +8,8 @@ import { fileURLToPath } from "node:url";
 const root = dirname(dirname(fileURLToPath(import.meta.url)));
 const tokensPath = join(root, "web", "src", "tokens.css");
 
-/** The 24 design tokens tokens.css must declare; changing this count changes the spec. */
-export const EXPECTED_TOKENS = 24;
+/** The 25 design tokens tokens.css must declare; changing this count changes the spec. */
+export const EXPECTED_TOKENS = 25;
 
 /** Returns the declarations of one selector block, mapped to trimmed values. */
 export function blockTokens(css, selector) {
