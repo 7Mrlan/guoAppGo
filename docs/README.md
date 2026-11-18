@@ -14,6 +14,7 @@ docs/
   evaluation-plan.md                       评估二：5 路线 → 6 模块清单 → 7 风险与验证 → 8 待验证 → 附录 B
   feature-inventory.md                     功能块清单与 P0/P1/P2 分级
   spike-stack.md                           可行性验证结果与踩坑
+  pitfalls.md                              踩坑登记：现象 → 根因 → 正确做法 → 怎么验证
   plan-m2.md                               当前阶段（M2）任务清单：基准提交、任务编号、可执行验收
   adr/README.md                            ADR 编号规则、模板入口、标题与状态清单
   adr/0000-template.md                     ADR 模板
