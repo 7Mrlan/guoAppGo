@@ -18,11 +18,11 @@ const stop = onRouteChange((next) => {
 });
 onBeforeUnmount(stop);
 
+// 主导航只列用户页面；开发页不进入导航，靠 #/dev/components 直开。
 const NAV: Array<{ route: RouteName; href: string; label: string }> = [
   { route: "home", href: "#/", label: "首页" },
   { route: "explore", href: "#/explore", label: "发现" },
   { route: "settings", href: "#/settings", label: "设置" },
-  { route: "components", href: "#/dev/components", label: "组件" },
 ];
 </script>
 

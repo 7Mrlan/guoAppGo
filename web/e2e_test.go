@@ -225,6 +225,26 @@ func TestM1Theme(t *testing.T) {
 	}
 }
 
+// TestM2Nav checks that the navigation lists only user pages, while the
+// component page stays reachable by its own hash.
+func TestM2Nav(t *testing.T) {
+	w := appWindow(t)
+
+	evalString(t, w, `location.hash = '#/', 'ok'`)
+	if !waitFor(t, w, `document.querySelector('[data-route=home]') !== null`) {
+		t.Fatal("the navigation did not render")
+	}
+	if got := evalString(t, w, `String(document.querySelectorAll('[data-route=components]').length)`); got != "0" {
+		t.Fatalf("navigation entries for the component page = %s, want 0", got)
+	}
+
+	evalString(t, w, `location.hash = '#/dev/components', 'ok'`)
+	if !waitFor(t, w, `document.querySelectorAll('[data-ac]').length === 12`) {
+		t.Fatalf("tagged controls reached by a direct hash = %s, want 12",
+			evalString(t, w, `String(document.querySelectorAll('[data-ac]').length)`))
+	}
+}
+
 // TestM1Components checks the component page: twelve tagged controls, exactly
 // one disabled, every control carries a name, and the layer closes on Esc with
 // the focus returned to the control that opened it.
