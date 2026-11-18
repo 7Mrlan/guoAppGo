@@ -15,16 +15,27 @@ body {
   transition: background var(--motion-fast) linear, color var(--motion-fast) linear;
 }
 
-/* 顶栏 */
+/* 外壳：宽窗口为侧栏 + 内容区，窄于 840px 时侧栏折到顶部 */
 
-.topbar {
+.shell {
+  display: grid;
+  grid-template-columns: var(--size-sidebar) 1fr;
+  min-height: 100vh;
+}
+
+.sidebar {
   display: flex;
-  align-items: center;
-  gap: var(--space-4);
-  height: var(--size-header);
-  padding: 0 var(--space-4);
-  border-bottom: 1px solid var(--color-border);
+  flex-direction: column;
+  gap: var(--space-3);
+  padding: var(--space-3);
+  border-right: 1px solid var(--color-border);
   background: var(--color-surface);
+}
+
+.content {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
 }
 
 .brand {
@@ -34,7 +45,8 @@ body {
 
 .nav {
   display: flex;
-  gap: var(--space-2);
+  flex-direction: column;
+  gap: var(--space-1);
 }
 
 .nav__link {
@@ -56,6 +68,27 @@ body {
 .nav__link[aria-current="page"] {
   color: var(--color-accent);
   background: var(--color-surface-raised);
+}
+
+@media (max-width: 839px) {
+  .shell {
+    grid-template-columns: 1fr;
+  }
+
+  .sidebar {
+    flex-direction: row;
+    align-items: center;
+    gap: var(--space-2);
+    border-right: 0;
+    border-bottom: 1px solid var(--color-border);
+    padding: var(--space-2) var(--space-3);
+    overflow-x: auto;
+  }
+
+  .nav {
+    flex-direction: row;
+    flex-wrap: nowrap;
+  }
 }
 
 /* 页面骨架 */
@@ -82,6 +115,13 @@ body {
   margin: 0 0 var(--space-4);
   color: var(--color-text-muted);
   font-size: var(--font-size-sm);
+}
+
+/* 首页区块标题 */
+.section__title {
+  margin: var(--space-4) 0 var(--space-2);
+  font-size: var(--font-size-md);
+  font-weight: 600;
 }
 
 /* 简介折叠：默认两行，展开后不裁切。 */

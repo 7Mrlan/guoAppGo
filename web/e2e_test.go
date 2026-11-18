@@ -225,6 +225,127 @@ func TestM1Theme(t *testing.T) {
 	}
 }
 
+// TestM2Shell checks the shell: four navigation entries plus a search entry,
+// the current-page marker, and the collapsed layout below 840px.
+func TestM2Shell(t *testing.T) {
+	w := appWindow(t)
+
+	evalString(t, w, `location.hash = '#/', 'ok'`)
+	if !waitFor(t, w, `document.querySelector('[data-role=home]') !== null`) {
+		t.Fatal("the home page did not render")
+	}
+
+	if got := evalString(t, w, `String(document.querySelectorAll('[data-role=nav-link]').length)`); got != "4" {
+		t.Fatalf("navigation entries = %s, want 4", got)
+	}
+	labels := `[...document.querySelectorAll('[data-role=nav-link]')].map((e) => e.textContent.trim()).join(',')`
+	if got := evalString(t, w, labels); got != "首页,发现,追剧,我的" {
+		t.Fatalf("navigation labels = %q, want 首页,发现,追剧,我的", got)
+	}
+	if got := evalString(t, w, `String(document.querySelectorAll('[data-route=search]').length)`); got != "1" {
+		t.Fatalf("search entries = %s, want 1", got)
+	}
+
+	// 当前窗口宽 800：窄布局生效，导航应为横向排列。
+	if got := evalString(t, w, `String(matchMedia('(max-width: 839px)').matches)`); got != "true" {
+		t.Fatalf("narrow media query = %s, want true at this window width", got)
+	}
+	if got := evalString(t, w, `getComputedStyle(document.querySelector('.nav')).flexDirection`); got != "row" {
+		t.Fatalf("navigation direction = %q, want row in the collapsed layout", got)
+	}
+
+	evalString(t, w, `location.hash = '#/follow', 'ok'`)
+	if !waitFor(t, w, `document.querySelector('[aria-current=page]') !== null`) {
+		t.Fatal("the current-page marker did not render")
+	}
+	if got := evalString(t, w, `document.querySelector('[aria-current=page]').dataset.route`); got != "follow-list" {
+		t.Fatalf("current nav entry on the follow route = %q, want follow-list", got)
+	}
+}
+
+// TestM2Home checks the home page: three sections in order, and the error state
+// with a retry that recovers once the host stops failing.
+func TestM2Home(t *testing.T) {
+	w := appWindow(t)
+
+	evalString(t, w, `location.hash = '#/', 'ok'`)
+	if !waitFor(t, w, `document.querySelector('[data-role=home]') !== null`) {
+		t.Fatal("the home page did not render")
+	}
+	sections := `[...document.querySelectorAll('.section__title')].map((e) => e.textContent.trim()).join(',')`
+	if got := evalString(t, w, sections); got != "继续观看,为你推荐,榜单" {
+		t.Fatalf("home sections = %q, want 继续观看,为你推荐,榜单", got)
+	}
+	for _, role := range []string{"home-watching", "home-feed", "home-ranking"} {
+		if got := evalString(t, w, `String(document.querySelectorAll('[data-role=`+role+`]').length)`); got != "1" {
+			t.Fatalf("section %s = %s, want 1", role, got)
+		}
+	}
+
+	evalString(t, w, `location.hash = '#/explore', 'ok'`)
+	if !waitFor(t, w, `document.querySelector('[data-role=catalog-item]') !== null`) {
+		t.Fatal("the catalogue did not render before the error case")
+	}
+	evalString(t, w, `(() => { window.__forceHostError = true; location.hash = '#/'; return 'ok'; })()`)
+	if !waitFor(t, w, `document.querySelector('[data-role=home-error]') !== null`) {
+		t.Fatal("a failing host did not render the error state")
+	}
+
+	evalString(t, w, `(() => { window.__forceHostError = false; document.querySelector('[data-role=home-error] button').click(); return 'ok'; })()`)
+	if !waitFor(t, w, `document.querySelector('[data-role=home-feed]') !== null`) {
+		t.Fatal("retry did not recover the home page")
+	}
+}
+
+// TestM2Routes checks the parameterised routes: a catalogue item opens its
+// detail page, the follow page renders for a known id, and an unknown id falls
+// through to the not-found page instead of a blank screen.
+func TestM2Routes(t *testing.T) {
+	w := appWindow(t)
+
+	// 页面数据必须来自本地 fixture：把 fetch 换成计数器，跑完核对调用次数为 0。
+	evalString(t, w, `(() => { window.__netCalls = 0; window.fetch = () => { window.__netCalls++; return Promise.reject(new Error('M2 does not use the network')); }; return 'ok'; })()`)
+
+	evalString(t, w, `location.hash = '#/explore', 'ok'`)
+	if !waitFor(t, w, `document.querySelector('[data-role=catalog-item]') !== null`) {
+		t.Fatal("the catalogue did not render")
+	}
+
+	firstID := evalString(t, w, `document.querySelector('[data-role=catalog-item]').dataset.id`)
+	evalString(t, w, `document.querySelector('[data-role=catalog-item]').click(), 'ok'`)
+	if !waitFor(t, w, `location.hash === '#/detail/`+firstID+`'`) {
+		t.Fatalf("hash after opening the first item = %q, want #/detail/%s", evalString(t, w, `location.hash`), firstID)
+	}
+	if !waitFor(t, w, `document.querySelector('[data-role=detail-title]') !== null`) {
+		t.Fatal("the detail page did not render")
+	}
+	if got := evalString(t, w, `document.querySelector('[data-role=detail-title]').textContent.trim().length > 0 ? 'ok' : 'empty'`); got != "ok" {
+		t.Fatalf("the detail title = %q, want a non-empty title", got)
+	}
+
+	evalString(t, w, `location.hash = '#/detail/nope', 'ok'`)
+	if !waitFor(t, w, `!!document.querySelector('[data-role=not-found]')`) {
+		t.Fatal("an unknown detail id did not render the not-found page")
+	}
+
+	evalString(t, w, `location.hash = '#/follow/`+firstID+`', 'ok'`)
+	if !waitFor(t, w, `document.querySelector('[data-role=follow]') !== null`) {
+		t.Fatal("the follow page did not render for a known id")
+	}
+	if got := evalString(t, w, `document.querySelector('[data-role=follow-title]').textContent.trim().length > 0 ? 'ok' : 'empty'`); got != "ok" {
+		t.Fatalf("the follow title = %q, want a non-empty title", got)
+	}
+
+	evalString(t, w, `location.hash = '#/follow/nope', 'ok'`)
+	if !waitFor(t, w, `!!document.querySelector('[data-role=not-found]')`) {
+		t.Fatal("an unknown follow id did not render the not-found page")
+	}
+
+	if got := evalString(t, w, `String(window.__netCalls)`); got != "0" {
+		t.Fatalf("the content pages made %s network calls, want 0", got)
+	}
+}
+
 // TestM2Nav checks that the navigation lists only user pages, while the
 // component page stays reachable by its own hash.
 func TestM2Nav(t *testing.T) {
