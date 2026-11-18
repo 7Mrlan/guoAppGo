@@ -65,6 +65,8 @@ git -C guoapp diff --name-status 4c7aab6 5a7a116 -- lib test
 | `lib/ui/player/player_lock.dart` | +23 / −17 | +6 |
 | `lib/ui/player/player_surface.dart` | +2 / −2 | 0 |
 
+**基准已移动到 main（2026-11-18）：`012de5f6ed67969ca57df03ccca1225018427277`，tag 之后共 34 个提交**（`git rev-list --count 4c7aab6..012de5f6`；注意先跑 `git rev-parse --is-shallow-repository`，浅克隆会把整条历史算成差值——把关踩过这个坑，`rev-list` 一度给出 401 而不是 34）。本文 §4 的判定基于 tag 时点，之后新增的功能已并入 §4（新增 A7 老板键、C11 后台播放与系统媒体控件），其余增量与验收见 `plan-m2.md`。`5a7a116..012de5f6` 这一段是 30 文件 +2,386/−317：`lib/` 13、`windows/` 5、`android/` 4、`native/` 4、`ios/` 2、`macos/` 1。
+
 **Windows 渲染的一条旁证**：main 把 `packages/media_kit_video/windows` 的渲染后端从 ANGLE 换成 D3D11（删 `angle_surface_manager.*`，增 `d3d11_surface_manager.*` + `render_d3d11.h`，10 文件 +493/−598）。我们不用 media_kit，不影响实现；但它说明上游在 Windows 渲染上有已知问题正在打补丁——**做 Windows 附加端时 D3D11 这条路是被踩过的，别自己再摸一遍 ANGLE。**
 
 ---
@@ -113,7 +115,7 @@ git -C guoapp diff --name-status 4c7aab6 5a7a116 -- lib test
 模块 = `manifest.json` + `main.js` 的 zip，CommonJS 写法，`module.exports` 导出 `categories/catalogPage/search/detail/resolveMedia/...`，运行时 `github.com/dop251/goja`（`native/core/module_script.go:14,23-33`；示例 `native/module_example/jsexample/`）。manifest 声明 `runtime:"js"`、`api:1`、`capabilities`、`hosts` 域名白名单、`adult`、`allowEmptyCatalog`。模块有实例池（上限 4）、60s 超时、5s 快取超时（`module_script.go:20-22`）。模块商店索引是公开 GitHub JSON（`native/core/module_index.go:25-26`，raw + jsDelivr 双源）。
 **决策（2026-11-17，Chief 拍板）：v1 只做红果单源；但必须做模块宿主最小集（M6-lite），moejs 不进主干，ADR-0009 不写。**
 修正一处此前的误判：本文初稿把「单源」推成「模块系统整层不做」，这是错的。**红果本身就是 api:1 的 JS 模块**（`manifest.json` + `main.js`，公开仓 `guoapp-modules/hongguo`），仓库里 `native/core/bundled/*` 被 `.gitignore` 排除、只留 `.gitkeep`，构建期由 CI 把红果仓 checkout 进该目录，再由 `//go:embed all:bundled` 编进 Go 核心（`native/core/module_bundled.go`）。**没有模块宿主，红果加载不出来，应用等于白屏。**
-所以 v1 的 M6-lite = 构建期注入 + 加载 + 校验 + 复用 goja 执行；**不做**的是商店索引、多源切换、模块安装 UI。省下的是那一层，不是整个模块机制（探路核算为 +5~7 人天，见 `evaluation-plan.md`）。
+所以 v1 的 M6-lite = 构建期注入 + 加载 + 校验 + 复用 goja 执行；**不做**的是商店索引、多源切换、模块安装 UI。省下的是那一层，不是整个模块机制。**人天不在这里重复写**——M6-lite 的增量与合计只认 `evaluation-plan.md` §6.3 的口径（对外报 117），本文只写引用。
 **推论：`moejs` 的问题不是"要不要引入 JS 引擎"，而是"要不要用 moejs 替掉 goja"。** 这是纯替换题，不是新增能力题，评估口径应该按"迁移成本 + API 兼容性"算，而不是按"引入新依赖的风险"算。
 
 顺带给出隔离层的落点（供 v2 的 moejs ADR 用，不代替探路的结论）：现在跑一段站源 JS 的入口只有两处——`module_script.go` 的 `jsProvider`（建 VM、加载 CommonJS 包装、取 `module.exports`、调用时 JSON 编解码）和 `module_host.go`（给 JS 用的 `host` 对象：`fetch`、`exclusive`、`dramaId`/`chapterId` 等）。**`Provider` 接口以下（`provider_*.go` 1,545 行）与 JS 引擎无关**，已经天然被隔离。也就是说替换 goja 的爆炸半径是这两个文件（475 + 406 行），不是整个 2,614 行的 `module_*`。这一点直接回答“能不能用一层自己的适配层隔离”：能，而且现在就已经隔着，代价是改写约 880 行、并验证 host 对象的语义等价（`fetch` 的超时/限流/重定向/状态码白名单最容易被新引擎的差异咬到）。
@@ -156,6 +158,7 @@ git -C guoapp diff --name-status 4c7aab6 5a7a116 -- lib test
 | A4 | 窗口管理（恢复尺寸、置顶、单实例、便携数据、Windows 数据迁移） | `ui/window_frame.dart` 54、`window_on_top.dart` 22、`portable_data.dart` 32、`windows_data_migration.dart` 36、`main.dart:31-53` | 必做（原生重写） | P1 | M |
 | A5 | 主题与动效（系统取色 / 6 色板 / 深色 / 纯黑 / 电视主题 / 动效降级） | `ui/theme/app_theme.dart` 103、`motion.dart` 261、`system_color.dart` 15 | 必做 | P1 | M |
 | A6 | 全局状态页与错误态 | `ui/widgets/status_view.dart` 80 | 必做 | P1 | S |
+| A7 | 老板键（设置里录制快捷键，全局按下隐藏/恢复窗口，隐藏时暂停，`#180`） | `lib/boss_key.dart` 125、`ui/settings/boss_key_tile.dart` 81、`macos/Runner/MainFlutterWindow.swift` +55、`windows/runner/flutter_window.cpp` +60（提交 `192d0f0`，331 行） | 桌面专属 | P2 | S |
 
 ### B. 浏览
 
@@ -187,6 +190,7 @@ git -C guoapp diff --name-status 4c7aab6 5a7a116 -- lib test
 | C8 | 投屏（DLNA/SSDP 发现、GBK 设备描述解析、局域网流、控制） | `ui/player/cast_page.dart` 414、`Go app_cast.go` 439、`app_stream.go` 的 `lan` 分支 | 可做 | P1 | M |
 | C9 | 清晰度/音轨/倍速切换与解码方式切换 | `playback_sheets.dart` 312、`playback_session.dart:620-624` | 必做 | P0 | M |
 | C10 | 播放诊断日记（事件日志、查看、复制） | `diary_service.dart` 89、`ui/settings/diary_view.dart` 138、`Go diagnostics.go` 97 | 可做 | P2 | S |
+| C11 | 后台播放与系统媒体控件（最小化/失焦继续播，macOS「正在播放」、Windows SMTC；老板键隐藏时仍暂停） | `lib/media_controls.dart` 127、`playback_session.dart` +92、`macos/Runner/MainFlutterWindow.swift` +93、`windows/runner/media_controls.cpp` 225 + `media_controls.h` 34（提交 `012de5f`，18 文件 +1,184） | 必做 | P1 | M |
 
 ### D. 下载
 
