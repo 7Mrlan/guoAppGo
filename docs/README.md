@@ -14,6 +14,7 @@ docs/
   evaluation-plan.md                       评估二：5 路线 → 6 工期 → 7 风险与验证 → 8 待验证 → 附录 B
   feature-inventory.md                     功能块清单与 P0/P1/P2 分级
   spike-stack.md                           可行性验证结果与踩坑
+  plan-m2.md                               当前阶段（M2）任务清单：基准提交、任务编号、可执行验收、人天
   adr/README.md                            ADR 编号规则、模板入口、标题与状态清单
   adr/0000-template.md                     ADR 模板
   adr/0002-ui-route-webview.md             已接受（条件：R1 B 段不劣于对照组）
@@ -32,6 +33,10 @@ docs/
 4. [spike-stack.md](spike-stack.md) — 戈：0 版本基准 → 1 环境阻塞 → 2 MyGo → 3 moejs → 4 交叉编译 → 5 MediaSource → 6 MSE 实测 → 7 坑 → 8 结论 → 9 未覆盖
 
 评估两份是同一份评估按章节边界切开，不是两份独立报告：章节编号连续（0–4 接 5–8，不重起），两文互相链接，任一处链接失效即视为断链。`evaluation-plan.md` 的数据与结论一律引用 `evaluation.md`，不得各自另立一套数字。
+
+## 当前阶段
+
+M2 进行中，清单见 [plan-m2.md](plan-m2.md)：范围以基准提交 `012de5f6`（`012de5f6ed67969ca57df03ccca1225018427277`）为界，开工前先对基准——`git fetch origin main && git rev-parse origin/main` 与文档比对，并用 `git rev-parse --is-shallow-repository` 排除浅克隆导致的历史截断（曾因此把 34 个提交数成 401）。任务编号、验收与顺序以该文件为准，完工记录回填到 [testing/acceptance.md](testing/acceptance.md)。
 
 ## 验证脚手架
 
