@@ -1,6 +1,6 @@
 # ADR-0003：播放内核用 hls.js + Go 代理，暂不嵌 mpv
 
-- 状态：已接受（条件：随 ADR-0002 的 R1 B 段；真实源不达标则重开本 ADR，改选内嵌 mpv，预算 +20~30 人天）
+- 状态：已接受（条件：随 ADR-0002 的 R1 B 段；真实源不达标则重开本 ADR，改选内嵌 mpv）
 - 日期：2026-11-17
 - 决策人：Chief（本群当轮拍板）
 - 关联：ADR-0002（UI 路线）、ADR-0004（协议范围）、[../evaluation-plan.md](../evaluation-plan.md) R0/R1
@@ -18,7 +18,7 @@
 | --- | --- | --- | --- | --- |
 | A 系统媒体框架直连 | `ui/video` + AVFoundation/Media Foundation | 原生解码、硬件加速、无 JS | 无请求头、无 CENC、无 PiP；需另做鉴权与解密后的本地服务 | 基本要重造现有代理，收益低 |
 | B hls.js + Go 代理 | CENC/鉴权在 Go 代理完成，代理吐明文 HLS；webview 用 hls.js + `<video>` | 复用现有代理；PiP/全屏/字幕/弹幕成熟；TS 由 hls.js 转封装 | MSE 内存；依赖系统解码器；hls.js 体积 | B 段真实源表现未验；macOS 真机未验 |
-| C 内嵌 mpv/ffmpeg | native module 嵌 libmpv 或 ffmpeg | 编解码覆盖最全，能兜底异常封装 | +20~30 人天；引入 cgo/本地库；GPL 与签名、体积问题 | 与 MyGo"纯 Go、无 cgo"的设计冲突，维护成本高 |
+| C 内嵌 mpv/ffmpeg | native module 嵌 libmpv 或 ffmpeg | 编解码覆盖最全，能兜底异常封装 | 引入 cgo/本地库；GPL 与签名、体积问题 | 与 MyGo"纯 Go、无 cgo"的设计冲突，维护成本高 |
 
 ## 决定
 
@@ -27,9 +27,9 @@
 两条可复核的理由：
 
 1. 现有代理已经解决了"取流"里最脏的部分（头、签名、CENC），webview 只需要一个干净的 HLS 源。
-2. 容器格式不构成额外成本：TS 由 hls.js 在 JS 内转封装（实测首帧 693 ms、seek 3 ms），"代理转封装 +5~8 人天"只在放弃 hls.js、改走原生 `<video>` HLS 时才付。
+2. 容器格式不构成额外成本：TS 由 hls.js 在 JS 内转封装（实测首帧 693 ms、seek 3 ms）；只有在放弃 hls.js、改走原生 `<video>` HLS 时才需要实现一层代理转封装。
 
-**退路**：R1 的 B 段真实源若不达标（首帧、seek、内存或稳定性任一不过且对照组正常），重开本 ADR 改选 C，预算按 +20~30 人天、B 单源变 136~150 处理（此时 A 单源 133 更省，选型按 A 重比）。
+**退路**：R1 的 B 段真实源若不达标（首帧、seek、内存或稳定性任一不过且对照组正常），重开本 ADR 改选 C；C 与 A 的播放器能力重叠，此时按 ADR-0002 的 R0 结论选 A。
 
 ## 后果
 

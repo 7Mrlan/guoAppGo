@@ -11,10 +11,10 @@ docs/
   architecture.md                          架构：模块划分、进程/线程模型、IPC、数据流
   platform.md                              macOS arm64 与 Windows 11 x64 的差异清单
   evaluation.md                            评估一：0 版本基准 → 1 结论 → 2 规模 → 3 MyGo → 4 moejs → 附录 A
-  evaluation-plan.md                       评估二：5 路线 → 6 工期 → 7 风险与验证 → 8 待验证 → 附录 B
+  evaluation-plan.md                       评估二：5 路线 → 6 模块清单 → 7 风险与验证 → 8 待验证 → 附录 B
   feature-inventory.md                     功能块清单与 P0/P1/P2 分级
   spike-stack.md                           可行性验证结果与踩坑
-  plan-m2.md                               当前阶段（M2）任务清单：基准提交、任务编号、可执行验收、人天
+  plan-m2.md                               当前阶段（M2）任务清单：基准提交、任务编号、可执行验收
   adr/README.md                            ADR 编号规则、模板入口、标题与状态清单
   adr/0000-template.md                     ADR 模板
   adr/0002-ui-route-webview.md             已接受（条件：R1 B 段不劣于对照组）
@@ -82,6 +82,7 @@ node scripts/check-docs.mjs
 5. 版本号、路径、依赖名必须可查，不得凭印象填写。
 6. 版本一律按 tag 锁定并附 commit sha，来源见 [versions.md](versions.md)。禁止 `@latest`、禁止按 main 分支下结论。
 7. macOS 未拿到真机前，凡涉及 WKWebView 实际行为、`.app` 打包、签名、公证的项一律写 **未验证**，不得写"已通过"；Windows 实测结论不得外推为两端结论。
+8. 文档不写工作量或时间估算，也不写进度预测。进度只以"该阶段验收标准是否全部通过"衡量。
 
 ## 第一轮产出的填写要求
 
@@ -101,7 +102,7 @@ node scripts/check-docs.mjs
 章节编号接续上一份，不重起：
 
 5. 路线取舍：全 Go 原生 UI / Go+webview / 混合三种形态，每条必须写否决条件
-6. 工作量估算：按模块拆，乐观/现实/悲观三档，单位人天，写明口径（人数、熟悉度、是否含测试与文档）
+6. 模块清单：模块职责、依赖关系、复用来源与取舍理由；**不写工作量或时间估算**
 7. 风险与验证：前 5 风险及每个风险的验证方式，一条命令或一个半天内能做完的 spike
 8. 查不到 / 待验证：显式列出没查到依据的项，并写已尝试的检索方式
 附录 B：给下一轮的输入
@@ -110,7 +111,7 @@ node scripts/check-docs.mjs
 
 - 规模数据从仓库实拉，附命令与输出（例如 `git ls-files | wc -l`、`cloc` 结果、`pubspec.yaml` 原文）。
 - 依赖与版本写具体 tag 或 commit sha，不写"最新"。
-- 估算表必须写清口径：几个人、是否熟悉 Go、是否包含测试与文档工时。
+- 不出现任何工作量或时间估算——这是硬性禁止项，不是风格建议；结论只靠技术依据与验收结果。
 - 现状类结论必须带证据（release 记录、issue 链接、源码行数与路径）；"查不到"要写已尝试的检索方式。
 - 禁止无来源数字、禁止"大概/可能"。
 

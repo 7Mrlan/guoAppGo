@@ -2,7 +2,7 @@
 
 评估：探路 · 数据采集时间 2026-11-17 00:05–00:15（America/Los_Angeles）· 所有结论以第 0 节版本基准为准
 
-> 本文只覆盖"基线、原应用规模、MyGo、moejs"；**路线取舍、工作量估算、风险清单在 [evaluation-plan.md](evaluation-plan.md)**（两文按章节边界拆分，各自独立可读，章节编号连续不重起）。
+> 本文只覆盖"基线、原应用规模、MyGo、moejs"；**路线取舍、模块清单、风险清单在 [evaluation-plan.md](evaluation-plan.md)**（两文按章节边界拆分，各自独立可读，章节编号连续不重起）。
 
 ---
 
@@ -28,10 +28,10 @@
 
 1. **建议做。路线倾向 B（Go 核心 + webview 前端，播放器页也放 webview），但最终 A/B 等 R0 出结果再锁**：B 的优势全押在"播放能塞进 webview"上，这条未验证前不应当成既定事实。
 2. **前提纠正：这次不是"把 54k 行 Dart 翻译成 Go"。** `native/` 已有 **13,116 行 Go（非测试 11,784 行、77 个文件）、47 个 JSON RPC op**，站源、取流、下载抓取、CENC 解密、投屏、缓存、设置、更新都在里面；Dart 侧只通过一个 C ABI 入口（`DuanjuRequest`/`DuanjuFree`）调用。要做的是：**给现成核心配 UI 壳 + 平台层 + 进程模型**。
-3. **真正的技术缺口是两处，且都不在 Go 里**：① 播放器——`media_kit`（libmpv）1.2.6 + `lib/playback_session.dart` 1,397 行解码器/轨道/硬解编排；② 转码——`ffmpeg_kit` 在 Dart 侧做转封装、m3u8 合并、probe、封面解码，**`native/` 里 `ffmpeg|exec.Command` 命中 0**。这两块决定工期量级，UI 只决定日历长度。
-4. **现实工作量（v1 单源，含 M6-lite 模块宿主）：B 115~117 人天（对外按 117）、A 133 人天、C 115~125 人天**（口径见 [evaluation-plan.md](evaluation-plan.md) 6.3）。2 人并行约 **14 周**（B）。多源口径为 B 117 / A 142；**此前的"单源 106"是笔误**——106 是含 M6=7 的**多源小计**，单源（M6 整层不做）为 109，两列算法不一致，已按 6.3 修正。**B 是条件值：R1 不通过则单源合计 136~150，而 A 单源 133——失败即选 A（B 多 3~17 人天）**（见同文 R0）。开工前先做 4 个 spike，共 **5 人天**（同文第 7 节）。
+3. **真正的技术缺口是两处，且都不在 Go 里**：① 播放器——`media_kit`（libmpv）1.2.6 + `lib/playback_session.dart` 1,397 行解码器/轨道/硬解编排；② 转码——`ffmpeg_kit` 在 Dart 侧做转封装、m3u8 合并、probe、封面解码，**`native/` 里 `ffmpeg|exec.Command` 命中 0**。这两块决定实现难度与风险的量级，UI 只决定页面的形态与数量。
+4. **本团队不做工作量与工期估算**（用户 2026-11-17 明令）：评估只回答"做什么、有哪些技术风险、哪条路线更匹配现有能力"，不产出任何工作量或日期数字。路线 B 的依据是**复用已有 13k 行 Go 核心与现成站源模块 + "代理→MSE"已实测可播 + webview 侧播放周边能力成熟**，不是"它更省"。**B 是条件推荐：R1 不通过则 B 失去复用 webview 播放这一主要优势，改选 A**（见同文 R0）。开工前先做 4 个 spike（同文第 7 节），每个 spike 以"出结论"为出口。
 5. **moejs 已出局（v1 单源已定）**：Chief 2026-11-17 拍板 v1 只做红果。**后续裁定 v1 做 M6-lite 模块宿主**（构建期注入 + 加载 + 校验，含 goja 宿主），但商店索引、多源切换与白名单那一层不做；goja 那约 880 行 JS 桥照用、不替换，moejs 不进 `go.mod`，ADR-0009 不写。多源放 v2 再评估，理由与代价见 4.5。
-6. 两个要拍板的事：**Windows 上 HEVC/AV1 是否必须全量可播**（决定要不要嵌 mpv，+20~30 人天）、**是否接受 GPLv3 源码义务**（原仓库就是 GPLv3，见 2.5）。
+6. 两个要拍板的事：**Windows 上 HEVC/AV1 是否必须全量可播**（决定要不要嵌 mpv）、**是否接受 GPLv3 源码义务**（原仓库就是 GPLv3，见 2.5）。
 7. **平台顺序带条件（不是"macOS 已验证"）**：macOS arm64 仍是产品主目标，但团队当前没有 Mac，WebKit 真机行为、`.app` 打包、签名与公证全部**未验证**。拿到 Mac 之前，v1 的验收以 Windows 为准，macOS 相关代码用条件编译保留、不进 v1 验收；拿到 Mac 后按 `tools/spike/MAC-RUN.md` 跑一次即可翻回原排序，探针现成、不用重做。
 
 ---
@@ -102,7 +102,7 @@
 | --- | --- |
 | star / fork | 6,448 / 406 |
 | 创建时间 | 2026-09-26 |
-| release 总数 | **83 个，7 周**（最近 `v0.9.2`，2026-11-16） |
+| release 总数 | **83 个**（2026-09-26 至 2026-11-16，最近 `v0.9.2`） |
 | 提交密度 | `v0.9.0`→`v0.9.2`：5 天 146 commits、300 个文件 |
 | 测试文件 | 854 个 `*_test.go`，其中 `ui/` 309 个 |
 | 贡献者 | 100（API 单页上限，实际可能更多） |
@@ -161,7 +161,7 @@
 
 | 差距 | 影响 | 缓解 |
 | --- | --- | --- |
-| 无内置 libmpv | HEVC/AV1 在 Windows 依赖系统扩展；异常封装格式无软件兜底 | 本地代理 + 明确降级策略；必要时 native module 嵌 mpv（+20~30 人天） |
+| 无内置 libmpv | HEVC/AV1 在 Windows 依赖系统扩展；异常封装格式无软件兜底 | 本地代理 + 明确降级策略；必要时 native module 嵌 mpv |
 | 原生 UI 无画中画 | 迷你播放器/画中画要手写 | 选 webview 路线直接消掉 |
 | 无投屏 | 需自研设备发现/遥控 | 原 `app_cast.go` 是 Go，可直接复用 |
 | 控件库无"设计系统" | 圆角、动效、毛玻璃要自己搭 | `glass` 插件 + 统一主题层 |
@@ -190,7 +190,7 @@
 
 **限制（会影响 guoapp 现有模块）**：
 
-1. **只支持 ES Module，不支持 CommonJS**（全仓 grep `module.exports`/`require(` 命中 0）。而 guoapp 站源模块是 `module.exports = {...}` 形态——需要一层 wrapper（把 `module`/`exports` 注入脚本作用域），约 1~2 人天。
+1. **只支持 ES Module，不支持 CommonJS**（全仓 grep `module.exports`/`require(` 命中 0）。而 guoapp 站源模块是 `module.exports = {...}` 形态——需要一层 wrapper（把 `module`/`exports` 注入脚本作用域）。
 2. 不支持 JSON modules / import attributes、decorators、`using`、`Temporal`、Iterator helpers（`TODO.md` 明列）。
 3. 依赖 `github.com/MoeForge/moego v0.1.0-alpha.3`（**alpha**），Go ≥ 1.25。
 
@@ -211,13 +211,13 @@ README 实测（2026-10-01 采集，new-api 插件负载）：
 | 问题 | 证据 | 判定 |
 | --- | --- | --- |
 | API 稳定性 | 正式版只有 `v0.1.0`（11-09）与 `v0.1.1`（11-16）；两版之间 7 commits / 85 文件，release notes 无 breaking 声明 | 0.x 语义上**不承诺稳定**，但目前未见破坏性变更 |
-| 生产案例 / 活跃度 | 712 star、6 位贡献者、15 个 issue 全部 closed（中位 20 小时）、7 周 4 个 release | 活跃，但**查不到公开生产案例**（README 未列） |
+| 生产案例 / 活跃度 | 712 star、6 位贡献者、15 个 issue 全部 closed（中位 20 小时）、同一观察期内 4 个 release | 活跃，但**查不到公开生产案例**（README 未列） |
 | 明天改 API / 停更的代价 | 站源模块层被 `module_host.go`（406 行）+ `module_script.go`（17 KB）包住；全仓 `goja.` 引用仅 51 处 | 可隔离，见下 |
 | 仓库年龄与提交量 | 首个提交 2026-09-26，至 2026-11-16 共 **28 个提交**；13 个 tag（alpha.1~alpha.11 + `v0.1.0` + `v0.1.1`） | 一个半月的新项目，迭代密、公开样本小 |
 | 版本号是否等于兼容承诺 | `v0.1.0..v0.1.1` 的 7 个提交里有一条 `feat: add context (#10)`——**patch 版本里带新特性**；`git diff` 无导出函数/类型删除，删的只是小写内部函数 | 版本号不能当兼容性承诺用 |
 | 依赖链 | 自身 `go.mod` 依赖 `github.com/MoeForge/moego v0.1.0-alpha.3` | **正式版里挂 alpha 依赖**，比它自己的版本号更实质 |
 
-**隔离方案**：定义 `script.Engine` 接口（`Execute(script) (Value, error)`、`RegisterHost(fn)`、`Call(export, args)`、`Close()`），goja 与 moejs 各一个实现；业务与站源模块不 import 任何引擎包。切换/回退成本约 **5~8 人天**。停更则回退 goja，业务零改动。
+**隔离方案**：定义 `script.Engine` 接口（`Execute(script) (Value, error)`、`RegisterHost(fn)`、`Call(export, args)`、`Close()`），goja 与 moejs 各一个实现；业务与站源模块不 import 任何引擎包。切换/回退是一个接口实现的工作量，不影响业务代码。停更则回退 goja，业务零改动。
 
 ### 4.5 结论
 

@@ -227,67 +227,7 @@ function checkReadmeRegistration(docsFiles) {
   record("README 登记", problems.length === 0, detail);
 }
 
-/** 检查五：人天口径只在 evaluation-plan.md §6.3 定义；其他文件的区间与"对外报"必须与它一致，否则视为漂移。 */
-function checkBudgetNumbers(allFiles) {
-  const problems = [];
-  const planPath = path.join(ROOT, "docs/evaluation-plan.md");
-  if (!fs.existsSync(planPath)) {
-    record("人天口径一致", false, ["docs/evaluation-plan.md 不存在，无法取口径"]);
-    return;
-  }
-  const planText = fs.readFileSync(planPath, "utf8");
-  // 口径行：v1 实际（M6-lite）那一行，同时含小计、合计与对外值
-  const canonLine = planText.split("\n").find((l) => l.includes("M6-lite") && l.includes("小计") && l.includes("合计"));
-  // 口径区间：小计与合计各自的下界/上界
-  const sub = canonLine && canonLine.match(/小计\s*\**\s*([\d.]+)~([\d.]+)/);
-  const tot = canonLine && canonLine.match(/合计\s*\**\s*([\d.]+)~([\d.]+)/);
-  // 对外报的保守值，必须是单一数字
-  const out = canonLine && canonLine.match(/对外[^0-9]{0,8}([0-9]+)/);
-  if (!sub || !tot || !out) {
-    problems.push("§6.3 口径行解析失败：需同时含“小计 X~Y”“合计 X~Y”“对外… N”");
-    record("人天口径一致", false, problems);
-    return;
-  }
-  const allowed = new Set([`${sub[1]}~${sub[2]}`, `${tot[1]}~${tot[2]}`]);
-  // 失败路径与多源存档口径也允许出现，只取路线级（下界 ≥50）的区间，避免把模块级估算放进来
-  for (const line of planText.split("\n")) {
-    if (!/失败|退路|多源/.test(line)) continue;
-    for (const m of line.matchAll(/([\d.]+)~([\d.]+)\s*人天/g)) {
-      if (Number(m[1]) >= 50) allowed.add(`${m[1]}~${m[2]}`);
-    }
-  }
-  const outValue = out[1];
-  // 允许出现的其他口径，但所在行必须带限定词，说明它不是 v1 主线
-  const qualifiers = ["备选", "退路", "失败", "多源", "旧基数", "仅存档", "若 R1", "不通过", "R1 不", "更省", "差额", "多 ", "少 "];
-
-  for (const file of allFiles) {
-    const text = fs.readFileSync(file, "utf8");
-    const lines = text.split("\n");
-    lines.forEach((line, i) => {
-      const at = `${toRepoPath(file)}:${i + 1}`;
-      // 只校验路线级（B 单源 / v1）行上的区间；模块级估算（如 20~30、5~8）不在此列
-      const routeLine = /(^|[^A-Za-z])B([^A-Za-z]|$)/.test(line) && /单源|v1|对外/.test(line);
-      if (routeLine) {
-        for (const m of line.matchAll(/([\d.]+)~([\d.]+)\s*人天/g)) {
-          // 两端都不到 100 的视为增量、加价或差值（如 20~30、5~8、3~17），不参与总口径比对
-          if (Number(m[1]) < 100 || Number(m[2]) < 100) continue;
-          const range = `${m[1]}~${m[2]}`;
-          if (allowed.has(range)) continue;
-          if (qualifiers.some((q) => line.includes(q))) continue;
-          problems.push(`${at}: 人天区间 ${range} 与 §6.3 口径不符（允许 ${[...allowed].join(" / ")}）`);
-        }
-      }
-      // 对外口径：只允许一个数，全库校验
-      for (const m of line.matchAll(/对外[^0-9]{0,8}([0-9]+)\s*人天/g)) {
-        if (m[1] !== outValue) problems.push(`${at}: 对外报 ${m[1]} 人天，与 §6.3 的 ${outValue} 不符`);
-      }
-    });
-  }
-  const detail = problems.length ? problems : `口径 ${[...allowed].join(" / ")}，对外 ${outValue}`;
-  record("人天口径一致", problems.length === 0, detail);
-}
-
-/** 串行执行五项检查并打印结果；有失败项时以退出码 1 结束，供提交前门禁调用。 */
+/** 串行执行四项检查并打印结果；有失败项时以退出码 1 结束，供提交前门禁调用。 */
 function main() {
   const docsFiles = walk(DOCS);
   const rootFiles = ["README.md", "CHANGELOG.md"]
@@ -299,7 +239,6 @@ function main() {
   checkHeadingNumbering();
   checkVersionBaseline();
   checkReadmeRegistration(docsFiles);
-  checkBudgetNumbers(allFiles);
 
   console.log(`文档检查（${results.length} 项）：`);
   for (const r of results) {

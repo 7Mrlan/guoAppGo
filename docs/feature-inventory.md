@@ -109,13 +109,13 @@ git -C guoapp diff --name-status 4c7aab6 5a7a116 -- lib test
 
 **2.1 业务逻辑已经在 Go 里，不在 Dart 里。**
 `native/` 是独立的 Go module（`module duanjuapp/native`，`go 1.26.0`），通过一个 C ABI 暴露给 Flutter：`DuanjuRequest(json) -> json` + `DuanjuFree`（`lib/core_bridge.dart:26-68`）。47 个 op 覆盖目录、详情、取流、下载、弹幕、投屏、模块、存储、更新（`native/core/app_runtime.go:464` 起的 dispatch）。下载目录规划、文件命名、Windows 保留名处理也在 Go 里（`app_download_convert.go:21-60`）。
-**推论：这不是"把 Flutter 翻译成 Go"。核心业务已有 13k 行 Go 现成代码，重写缺的是 UI 层和平台壳。** 任何按"54k 行全量重写"给的工期都会高估；反过来，把 Go 层当成能零成本复用的也会低估——它现在是"被 FFI 调用的库"，不是"应用主程序"。
+**推论：这不是"把 Flutter 翻译成 Go"。核心业务已有 13k 行 Go 现成代码，重写缺的是 UI 层和平台壳。** 按"54k 行全量重写"来划范围会高估；反过来，把 Go 层当成能零成本复用的也会低估——它现在是"被 FFI 调用的库"，不是"应用主程序"。
 
 **2.2 站源已经是运行时可插拔的 JS 模块。**
 模块 = `manifest.json` + `main.js` 的 zip，CommonJS 写法，`module.exports` 导出 `categories/catalogPage/search/detail/resolveMedia/...`，运行时 `github.com/dop251/goja`（`native/core/module_script.go:14,23-33`；示例 `native/module_example/jsexample/`）。manifest 声明 `runtime:"js"`、`api:1`、`capabilities`、`hosts` 域名白名单、`adult`、`allowEmptyCatalog`。模块有实例池（上限 4）、60s 超时、5s 快取超时（`module_script.go:20-22`）。模块商店索引是公开 GitHub JSON（`native/core/module_index.go:25-26`，raw + jsDelivr 双源）。
 **决策（2026-11-17，Chief 拍板）：v1 只做红果单源；但必须做模块宿主最小集（M6-lite），moejs 不进主干，ADR-0009 不写。**
 修正一处此前的误判：本文初稿把「单源」推成「模块系统整层不做」，这是错的。**红果本身就是 api:1 的 JS 模块**（`manifest.json` + `main.js`，公开仓 `guoapp-modules/hongguo`），仓库里 `native/core/bundled/*` 被 `.gitignore` 排除、只留 `.gitkeep`，构建期由 CI 把红果仓 checkout 进该目录，再由 `//go:embed all:bundled` 编进 Go 核心（`native/core/module_bundled.go`）。**没有模块宿主，红果加载不出来，应用等于白屏。**
-所以 v1 的 M6-lite = 构建期注入 + 加载 + 校验 + 复用 goja 执行；**不做**的是商店索引、多源切换、模块安装 UI。省下的是那一层，不是整个模块机制。**人天不在这里重复写**——M6-lite 的增量与合计只认 `evaluation-plan.md` §6.3 的口径（对外报 117），本文只写引用。
+所以 v1 的 M6-lite = 构建期注入 + 加载 + 校验 + 复用 goja 执行；**不做**的是商店索引、多源切换、模块安装 UI。省下的是那一层，不是整个模块机制。
 **推论：`moejs` 的问题不是"要不要引入 JS 引擎"，而是"要不要用 moejs 替掉 goja"。** 这是纯替换题，不是新增能力题，评估口径应该按"迁移成本 + API 兼容性"算，而不是按"引入新依赖的风险"算。
 
 顺带给出隔离层的落点（供 v2 的 moejs ADR 用，不代替探路的结论）：现在跑一段站源 JS 的入口只有两处——`module_script.go` 的 `jsProvider`（建 VM、加载 CommonJS 包装、取 `module.exports`、调用时 JSON 编解码）和 `module_host.go`（给 JS 用的 `host` 对象：`fetch`、`exclusive`、`dramaId`/`chapterId` 等）。**`Provider` 接口以下（`provider_*.go` 1,545 行）与 JS 引擎无关**，已经天然被隔离。也就是说替换 goja 的爆炸半径是这两个文件（475 + 406 行），不是整个 2,614 行的 `module_*`。这一点直接回答“能不能用一层自己的适配层隔离”：能，而且现在就已经隔着，代价是改写约 880 行、并验证 host 对象的语义等价（`fetch` 的超时/限流/重定向/状态码白名单最容易被新引擎的差异咬到）。
@@ -140,7 +140,7 @@ git -C guoapp diff --name-status 4c7aab6 5a7a116 -- lib test
 - **P1**：缺了难用、但能看。发 v1 后补，或 v1 带明显妥协。
 - **P2**：锦上添花、长尾、或只对特定端有意义。v1 可以完全不出现。
 
-规模标签按行数与耦合度给，供探路换算人天（不在这里给绝对人天，避免和他的估算打架）：**S** ≤1k 行或纯壳；**M** 1k–3k；**L** 3k–8k；**XL** >8k 或存在未解决的技术选型。
+规模标签按行数与耦合度给，只用于拆分工单和排风险顺序，**不作为工作量估计**：**S** ≤1k 行或纯壳；**M** 1k–3k；**L** 3k–8k；**XL** >8k 或存在未解决的技术选型。
 
 ---
 
@@ -281,7 +281,7 @@ v1 做的 M6-lite = **构建期注入 + 加载 + 校验 + 复用 goja 执行**�
 | C8 投屏 | ~1k 行（414 UI + 439 Go + lan server） | 桌面投屏是长尾；且 DLNA 依赖同一局域网 | 想电视上看要自己拷文件 |
 | A4 便携数据 / Windows 数据迁移 | ~120 行 | 历史包袱（从便携版迁到用户目录） | 新应用没有历史数据，天然不需要 |
 
-**砍完这几项，原应用 37,219 行 Dart 里约 8–9k 行直接归零。Go 侧按 M6-lite 只少搬 `module_index.go`（164 行），`module_script/host/loader/bundled`（约 1.4k）仍然要沿用——先前"整块 E 省 2.6k 行 Go"的说法作废，别拿它当省人天的依据。**
+**砍完这几项，原应用 37,219 行 Dart 里约 8–9k 行直接归零。Go 侧按 M6-lite 只少搬 `module_index.go`（164 行），`module_script/host/loader/bundled`（约 1.4k）仍然要沿用——先前"整块 E 省 2.6k 行 Go"的说法作废，别拿它当可砍范围的依据。**
 
 ---
 
@@ -340,9 +340,9 @@ v1 做的 M6-lite = **构建期注入 + 加载 + 校验 + 复用 goja 执行**�
 
 ---
 
-## 10. 给探路的拆分口径（把功能块挂到人天上）
+## 10. 拆分口径（按功能块切工单）
 
-建议按这 7 张工单拆，与 §4 的 ID 一一对应，避免重复计工：
+建议按这 7 张工单拆，与 §4 的 ID 一一对应，避免同一块被两张工单重复覆盖。**每张工单的完成以验收标准（AC）全部通过为出口，不以日期或工作量衡量。**
 
 1. **壳与导航**：A1 A2 A3 A4 A5 A6（桌面单态）→ 对应 M+S 若干
 2. **浏览闭环**：B1 B2 B3 B4 B5 B6 B11
@@ -361,7 +361,7 @@ v1 做的 M6-lite = **构建期注入 + 加载 + 校验 + 复用 goja 执行**�
 **已定（2026-11-17，Chief 拍板，本群讨论）：v1 只做红果单源；模块宿主最小集 M6-lite 保留**（构建期注入 + 加载 + 校验，复用 goja），不做商店索引与多源切换，moejs 不进主干，ADR-0009 不写。原问题留档如下，不再待决。
 
 1. ~~**v1 到底要不要多站源？**~~ → **已定：单源。** 代价是站源成单点、少了"多源"这个差异点；多源放 v2 复评（见 §2.2、§5 E 段）。连带影响：C7 弹幕从"体验项"上升为唯一源的差异化体验，v1 范围评审时与 C2 一起看。
-2. **播放器路线定没定？**（阻塞 C1/C2 全部估算）libmpv(cgo) / webview video / 外部进程，三条路的工期差 2 倍以上。**现状：等 R0（播放能否塞进 webview）的 spike 结论，暂不锁定**，判定门槛与失败路径见 `evaluation-plan.md` 第 7 节。给 R0 补一条方法要求：**必须拿原 Flutter 应用作对照组**（同源、同网络、同 30 分钟），否则 R0 失败时分不清是"webview 撑不住"还是"tag 基线自带的取流缺陷被搬过来了"（§0 第 4 点：2.0.2 修的正是取流/重连），会把架构问题误判成实现问题。
+2. **播放器路线定没定？**（阻塞 C1/C2 的技术选型）libmpv(cgo) / webview video / 外部进程，三条路在平台能力与实现复杂度上差距很大。**现状：等 R0（播放能否塞进 webview）的 spike 结论，暂不锁定**，判定门槛与失败路径见 `evaluation-plan.md` 第 7 节。给 R0 补一条方法要求：**必须拿原 Flutter 应用作对照组**（同源、同网络、同 30 分钟），否则 R0 失败时分不清是"webview 撑不住"还是"tag 基线自带的取流缺陷被搬过来了"（§0 第 4 点：2.0.2 修的正是取流/重连），会把架构问题误判成实现问题。
 3. **ffmpeg 允许随包分发吗？**（阻塞 D3）涉及安装包体积（几十 MB）、macOS 公证、GPL 传染性（原项目本身是 GPL-3.0，新项目许可证未定）。
 4. **要不要兼容旧版备份？**（阻塞 F4）不兼容 = 老用户丢追剧与记录；兼容 = 要读懂旧格式。
 5. **多用户要不要？**（阻塞 B10 ≈ 970 行 UI）桌面单人场景弱，但原应用按家庭共享设计的。
